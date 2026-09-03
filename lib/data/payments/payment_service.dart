@@ -1,6 +1,8 @@
 import 'package:blockchain_utils/blockchain_utils.dart';
 import 'package:xrpl_dart/xrpl_dart.dart';
+import 'package:xrpl_mobile_wallet/config/network_id.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
+import 'package:xrpl_mobile_wallet/domain/tokens/rlusd.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/secret_validator.dart';
 
 /// Result of submitting a Payment transaction.
@@ -187,10 +189,14 @@ class PaymentService {
     return _signAndSubmit(
       secret: secret,
       fromAddress: fromAddress,
-      destination: destination,
-      destinationTag: destinationTag,
-      amount: amount,
       rpc: rpc,
+      build: (pubHex) => Payment(
+        amount: amount,
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        account: fromAddress,
+        signer: XRPLSignature.signer(pubHex),
+      ),
     );
   }
 
@@ -225,10 +231,70 @@ class PaymentService {
     return _signAndSubmit(
       secret: secret,
       fromAddress: fromAddress,
-      destination: destination,
-      destinationTag: destinationTag,
-      amount: amount,
       rpc: rpc,
+      build: (pubHex) => Payment(
+        amount: amount,
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        account: fromAddress,
+        signer: XRPLSignature.signer(pubHex),
+      ),
+    );
+  }
+
+  /// Unsigned RLUSD TrustSet (NoRipple, official issuer for [network]).
+  TrustSet buildRlusdTrustSet({
+    required String fromAddress,
+    required NetworkId network,
+    required String publicKeyHex,
+  }) {
+    return TrustSet(
+      account: fromAddress,
+      limitAmount: IssuedCurrencyAmount(
+        currency: Rlusd.currencyHex,
+        issuer: Rlusd.issuerFor(network),
+        value: Rlusd.limit,
+      ),
+      flags: [TrustSetFlag.tfSetNoRipple.id],
+      signer: XRPLSignature.signer(publicKeyHex),
+    );
+  }
+
+  Future<PaymentSubmitResult> setRlusdTrustLine({
+    required String secret,
+    required String fromAddress,
+    required NetworkId network,
+    required XRPProvider rpc,
+  }) {
+    return _signAndSubmit(
+      secret: secret,
+      fromAddress: fromAddress,
+      rpc: rpc,
+      build: (pubHex) => buildRlusdTrustSet(
+        fromAddress: fromAddress,
+        network: network,
+        publicKeyHex: pubHex,
+      ),
+    );
+  }
+
+  Future<PaymentSubmitResult> setRlusdTrustLineWithLedger({
+    required String fromAddress,
+    required NetworkId network,
+    required XRPProvider rpc,
+    required String publicKeyHex,
+    required Future<String> Function(List<int> txBlob) signTransactionBlob,
+  }) {
+    return signAndSubmitWithLedgerKeys(
+      fromAddress: fromAddress,
+      rpc: rpc,
+      publicKeyHex: publicKeyHex,
+      signTransactionBlob: signTransactionBlob,
+      build: (pubHex) => buildRlusdTrustSet(
+        fromAddress: fromAddress,
+        network: network,
+        publicKeyHex: pubHex,
+      ),
     );
   }
 
@@ -246,12 +312,16 @@ class PaymentService {
     final drops = XRPHelper.xrpToDrop(amountXrp.trim());
     return signAndSubmitWithLedgerKeys(
       fromAddress: fromAddress,
-      destination: destination,
-      destinationTag: destinationTag,
-      amount: XRPAmount(drops),
       rpc: rpc,
       publicKeyHex: publicKeyHex,
       signTransactionBlob: signTransactionBlob,
+      build: (pubHex) => Payment(
+        amount: XRPAmount(drops),
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        account: fromAddress,
+        signer: XRPLSignature.signer(pubHex),
+      ),
     );
   }
 
@@ -270,20 +340,25 @@ class PaymentService {
     if (amountError != null) throw ArgumentError(amountError);
     return signAndSubmitWithLedgerKeys(
       fromAddress: fromAddress,
-      destination: destination,
-      destinationTag: destinationTag,
-      amount: IssuedCurrencyAmount(
-        value: value.trim(),
-        currency: currency.trim(),
-        issuer: issuer.trim(),
-      ),
       rpc: rpc,
       publicKeyHex: publicKeyHex,
       signTransactionBlob: signTransactionBlob,
+      build: (pubHex) => Payment(
+        amount: IssuedCurrencyAmount(
+          value: value.trim(),
+          currency: currency.trim(),
+          issuer: issuer.trim(),
+        ),
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        account: fromAddress,
+        signer: XRPLSignature.signer(pubHex),
+      ),
     );
   }
 
-  /// Sign Payment with Ledger public key + device signature (no private key on phone).
+  /// Sign a prepared transaction with Ledger public key + device signature
+  /// (no private key on phone).
   ///
   /// Matches codebaseOne / `@ledgerhq/hw-app-xrp`:
   /// 1. autofill
@@ -295,12 +370,10 @@ class PaymentService {
   /// device — that is for software hash-and-sign only and causes SW 0x680b.
   Future<PaymentSubmitResult> signAndSubmitWithLedgerKeys({
     required String fromAddress,
-    required String destination,
-    int? destinationTag,
-    required BaseAmount amount,
     required XRPProvider rpc,
     required String publicKeyHex,
     required Future<String> Function(List<int> txBlob) signTransactionBlob,
+    required SubmittableTransaction Function(String pubHex) build,
   }) async {
     final pub = XRPPublicKey.fromHex(publicKeyHex);
     final derived = pub.toClassicAddress().address;
@@ -311,14 +384,7 @@ class PaymentService {
       );
     }
 
-    final transaction = Payment(
-      amount: amount,
-      destination: destination.trim(),
-      destinationTag: destinationTag,
-      account: fromAddress,
-      // SigningPubKey only (no TxnSignature yet) — same as xrpl.js encode(prepared).
-      signer: XRPLSignature.signer(publicKeyHex),
-    );
+    final transaction = build(publicKeyHex);
 
     await XRPHelper.autoFill(rpc, transaction);
     final feeDrops = transaction.fee?.toString();
@@ -346,10 +412,8 @@ class PaymentService {
   Future<PaymentSubmitResult> _signAndSubmit({
     required String secret,
     required String fromAddress,
-    required String destination,
-    int? destinationTag,
-    required BaseAmount amount,
     required XRPProvider rpc,
+    required SubmittableTransaction Function(String pubHex) build,
   }) async {
     // Local-only key material; not stored or logged.
     final privateKey = privateKeyFromSecret(
@@ -359,14 +423,7 @@ class PaymentService {
     final publicKey = privateKey.getPublic();
     final signerAddress = publicKey.toClassicAddress();
     final pubHex = publicKey.toHex();
-
-    final transaction = Payment(
-      amount: amount,
-      destination: destination.trim(),
-      destinationTag: destinationTag,
-      account: fromAddress,
-      signer: XRPLSignature.signer(pubHex),
-    );
+    final transaction = build(pubHex);
 
     await XRPHelper.autoFill(rpc, transaction);
     final feeDrops = transaction.fee?.toString();

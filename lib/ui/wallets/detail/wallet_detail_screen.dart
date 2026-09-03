@@ -5,12 +5,15 @@ import 'package:intl/intl.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/xrpl_rpc_client.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
+import 'package:xrpl_mobile_wallet/domain/tokens/rlusd.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
+import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/activity/tx_detail_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/send/send_screen.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_color.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/attach_keys/attach_keys_chooser_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/wallets/detail/add_rlusd_button.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/receive/receive_screen.dart';
 
 class WalletDetailScreen extends ConsumerWidget {
@@ -38,6 +41,12 @@ class WalletDetailScreen extends ConsumerWidget {
 
     final balances = listState.balances[walletId] ?? const <LedgerBalance>[];
     final a = account;
+    final network = ref.watch(networkControllerProvider).network;
+    final showAddRlusd = Rlusd.shouldShowAdd(
+      canSign: a.canSign,
+      network: network,
+      lines: balances.map((b) => (currency: b.currency, issuer: b.issuer)),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -317,6 +326,13 @@ class WalletDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
+          if (showAddRlusd) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: AddRlusdButton(account: a),
+            ),
+          ],
           const SizedBox(height: 24),
           Text('Balances', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),

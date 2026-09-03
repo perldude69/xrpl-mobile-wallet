@@ -34,3 +34,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First public tag baseline of the Android-first XRPL wallet (create, import,
   send, receive, activity, PIN, optional game PIN, USB Ledger, account watcher).
+- Add RLUSD trust line on wallet detail for signing and Ledger wallets (hidden
+  when the line already exists).

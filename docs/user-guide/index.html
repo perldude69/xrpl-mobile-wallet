@@ -223,6 +223,7 @@
         <li><a href="#list">Your wallet list</a></li>
         <li><a href="#detail">Open a wallet</a></li>
         <li><a href="#receive">Receive</a></li>
+        <li><a href="#rlusd">RLUSD</a></li>
         <li><a href="#send">Send</a></li>
         <li><a href="#watch">Watch-only &amp; add keys</a></li>
         <li><a href="#ledger">USB Ledger</a></li>
@@ -511,6 +512,21 @@
           </div>
           <figcaption>Share the QR or copy the address. This screen never shows secrets.</figcaption>
         </figure>
+      </section>
+
+      <section id="rlusd">
+        <h2>10a. Receive RLUSD</h2>
+        <p>Issued currencies (including Ripple USD) need a <strong>trust line</strong> before this address can hold them. Signing wallets and Ledger-enabled wallets can add the official RLUSD line from wallet detail.</p>
+        <ol class="steps">
+          <li>Open a wallet that can send (local keys or Ledger Device).</li>
+          <li>If you do not already hold RLUSD, tap <strong>Add RLUSD</strong>.</li>
+          <li>Read the issuer and network, then confirm. This uses a small extra XRP reserve (about 0.2 XRP) while the line exists.</li>
+          <li>After it succeeds, the button disappears and RLUSD can show under Balances (zero until someone sends you some).</li>
+        </ol>
+        <div class="callout tip">
+          <strong>Watch-only wallets</strong>
+          Add keys or enable Ledger Device first. The app will not offer Add RLUSD if the trust line is already there.
+        </div>
       </section>
 
       <section id="send">

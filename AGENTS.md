@@ -116,7 +116,7 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 - **Accent color:** optional ARGB on the wallet row; null → derive from address (`WalletColor`).
 - **Token names:** Bundled XRPSCAN snapshot + hex→ASCII fallback; no network fetch required for labels. Loaded in `main()` into `CurrencyDisplay`.
 - **XRP/USD:** XRPL-Labs TrustSet oracle `rXUMMaPpZqPutoRszR29jtC8amWq3APkx` (`XrpUsdOracle` parser, `PriceFeedController`, last rate in prefs). Portfolio toggle XRP vs USD — not a trading feed.
-- **Payments:** Build/sign/submit software txs in `PaymentService`; secrets passed in from KeyVault at the call site, not stored on the service. Amounts via `XrpAmount` (drops as `BigInt` strings). Ledger send signs on device then submits the blob.
+- **Payments:** Build/sign/submit software txs in `PaymentService`; secrets passed in from KeyVault at the call site, not stored on the service. Amounts via `XrpAmount` (drops as `BigInt` strings). Ledger send signs on device then submits the blob. RLUSD TrustSet (official issuer, NoRipple) uses the same generic sign/submit helper as Payment; only shown when `canSign` and the line is not already on `account_lines`.
 - **Drift:** Edit `tables.dart` / `app_database.dart`; never hand-edit `app_database.g.dart`. Migrations: v2 `accentColor`, v3 `useLedger` + `ledgerAccountIndex`.
 - **Game scores:** local top-5 only (`RunnerScoreboard`); no network.
 
@@ -134,7 +134,7 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 ## Product scope notes
 
 - Android-first sideload; not a Play Store product.
-- Features in tree: create (entropy ritual), import (mnemonic / family seed / watch-only / encrypted export), send, receive, activity, PIN + optional game PIN + biometrics, FGS watcher, unlock-screen Zerpland runner (game PIN or 3-fail decoy when no game PIN; top-5 local leaderboard), XRP/USD portfolio display, connection status chip.
+- Features in tree: create (entropy ritual), import (mnemonic / family seed / watch-only / encrypted export), send, receive, RLUSD trust line (signing / Ledger), activity, PIN + optional game PIN + biometrics, FGS watcher, unlock-screen Zerpland runner (game PIN or 3-fail decoy when no game PIN; top-5 local leaderboard), XRP/USD portfolio display, connection status chip.
 - Ledger Device checkbox on wallet detail enables Send for watch-only (USB, XRP app, path `m/44'/144'/index'/0/0`); no seed on phone; address mismatch → user error. See `lib/data/ledger_device/`.
 - Non-goals unless asked: DEX, NFTs, multi-sig UX, remote push server, iOS release polish.
 
