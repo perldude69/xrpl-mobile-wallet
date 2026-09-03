@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Create wallet — entropy ritual mockup</title>
+  <style>
+    :root {
+      --bg: #0b1216;
+      --bg-elev: #121c22;
+      --panel: #162229;
+      --teal: #00a3bf;
+      --teal-dim: #007a90;
+      --teal-glow: rgba(0, 163, 191, 0.35);
+      --text: #e8f1f4;
+      --muted: #8aa0aa;
+      --warn: #f0b429;
+      --danger: #e85d5d;
+      --ok: #3ecf8e;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 16px;
+      --phone-w: 390px;
+      --phone-h: 780px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 163, 191, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(62, 207, 142, 0.08), transparent),
+        var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 20px 48px;
+    }
+
+    .side {
+      max-width: 360px;
+      padding-top: 12px;
+    }
+    .side h1 {
+      font-size: 1.35rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .side p {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.92rem;
+      margin: 0 0 14px;
+    }
+    .side .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      border: 1px solid rgba(0, 163, 191, 0.4);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+    .side ul {
+      margin: 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    .side li { margin-bottom: 8px; }
+    .side code {
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.82em;
+      color: #b8e6f0;
+      background: rgba(0, 163, 191, 0.12);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .side .note {
+      margin-top: 20px;
+      padding: 12px 14px;
+      background: rgba(240, 180, 41, 0.08);
+      border: 1px solid rgba(240, 180, 41, 0.28);
+      border-radius: 12px;
+      color: #e8d4a0;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    /* Phone chrome */
+    .phone {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      background: linear-gradient(165deg, #1a2830 0%, #0e1519 100%);
+      border-radius: 36px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.5),
+        0 28px 80px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 26px;
+      background: #05080a;
+      border-radius: 20px;
+      z-index: 5;
+    }
+    .status-bar {
+      height: 48px;
+      padding: 18px 22px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .app-bar {
+      padding: 8px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .app-bar .back {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .app-bar h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px 20px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--teal-dim) transparent;
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 18px;
+      padding: 0 4px;
+    }
+    .step-dot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 52px;
+    }
+    .step-dot span {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .step-dot.active span,
+    .step-dot.done span {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #041014;
+    }
+    .step-dot label {
+      font-size: 0.62rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin-bottom: 16px;
+    }
+    .step-line.on { background: var(--teal-dim); }
+
+    .panel {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .panel h3 {
+      margin: 0 0 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .panel .hint {
+      margin: 0 0 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    label.field {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--teal-glow);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s, opacity 0.12s, background 0.15s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #12b8d4, var(--teal));
+      color: #041014;
+      box-shadow: 0 8px 24px var(--teal-glow);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .btn-sm {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+    }
+
+    /* Dice arena — 3D table */
+    .dice-arena {
+      position: relative;
+      height: 260px;
+      border-radius: 14px;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 100%, rgba(0, 0, 0, 0.55), transparent 70%),
+        radial-gradient(circle at 50% 35%, rgba(0, 163, 191, 0.1), transparent 55%),
+        linear-gradient(180deg, #142028 0%, #0c1418 55%, #0a1014 100%);
+      border: 1px dashed rgba(0, 163, 191, 0.35);
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+      perspective: 900px;
+      perspective-origin: 50% 40%;
+    }
+    .dice-arena::after {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: 10%;
+      height: 28%;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .dice-arena:active { cursor: grabbing; }
+    .dice-arena.rolling {
+      border-style: solid;
+      border-color: var(--teal);
+      box-shadow: inset 0 0 40px var(--teal-glow);
+    }
+    .dice-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 16px;
+      z-index: 2;
+    }
+    .dice-hint strong { color: var(--text); font-weight: 600; }
+    .dice-arena.has-result .dice-hint,
+    .dice-arena.rolling .dice-hint { opacity: 0; }
+
+    /* Outer shell: position + bounce on table */
+    .die-wrap {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      left: 0;
+      top: 0;
+      z-index: 1;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .die-wrap .die-shadow {
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 44px;
+      height: 14px;
+      margin-left: -22px;
+      margin-top: -2px;
+      background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 70%);
+      border-radius: 50%;
+      transform: translateZ(-1px) scale(1);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    .die-wrap.rolling .die-shadow {
+      opacity: 0.45;
+      transform: translateZ(-1px) scale(1.15);
+    }
+    .die-wrap.settled .die-shadow {
+      opacity: 0.7;
+      transform: translateZ(-1px) scale(0.95);
+    }
+
+    /* Inner cube */
+    .die-cube {
+      width: 48px;
+      height: 48px;
+      position: relative;
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      will-change: transform;
+    }
+    .die-face {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 9px;
+      /* Per-die color via CSS vars set on .die-wrap */
+      background:
+        linear-gradient(
+          145deg,
+          var(--die-face-hi) 0%,
+          var(--die-face-mid) 48%,
+          var(--die-face-lo) 100%
+        );
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--die-border);
+      display: grid;
+      place-items: center;
+      backface-visibility: hidden;
+    }
+    .die-face::before {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      pointer-events: none;
+    }
+    .die-wrap .pip.on {
+      background: radial-gradient(
+        circle at 35% 30%,
+        var(--die-pip-hi),
+        var(--die-pip) 70%
+      );
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    }
+    /*
+     * Cube layout (local space, +Z toward camera when cube rotation is identity):
+     *   1 front, 6 back, 3 right (+X), 4 left (−X), 2 top (−Y), 5 bottom (+Y)
+     * Half-size = 24px translateZ
+     */
+    .die-face.f1 { transform: translateZ(24px); }
+    .die-face.f6 { transform: rotateY(180deg) translateZ(24px); }
+    .die-face.f3 { transform: rotateY(90deg) translateZ(24px); }
+    .die-face.f4 { transform: rotateY(-90deg) translateZ(24px); }
+    .die-face.f2 { transform: rotateX(90deg) translateZ(24px); }
+    .die-face.f5 { transform: rotateX(-90deg) translateZ(24px); }
+
+    .pips {
+      display: grid;
+      grid-template-columns: repeat(3, 9px);
+      grid-template-rows: repeat(3, 9px);
+      gap: 3px;
+    }
+    .pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: transparent;
+    }
+    .pip.on {
+      /* fallback; per-die color set on .die-wrap */
+      background: radial-gradient(circle at 35% 30%, #3a4a52, #152028 70%);
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+
+    .swipe-trail {
+      position: absolute;
+      pointer-events: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--teal);
+      opacity: 0.6;
+      filter: blur(1px);
+      animation: trail-fade 0.5s forwards;
+      z-index: 3;
+    }
+    @keyframes trail-fade {
+      to { opacity: 0; transform: scale(2.5); }
+    }
+
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .meter {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .meter > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--teal-dim), var(--ok));
+      transition: width 0.35s ease;
+    }
+    .meter-row .val {
+      font-variant-numeric: tabular-nums;
+      min-width: 3.5rem;
+      text-align: right;
+      color: var(--text);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    .chip {
+      font-family: ui-monospace, monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      min-width: 2rem;
+      text-align: center;
+      padding: 6px 10px;
+      border-radius: 10px;
+      color: var(--chip-fg, #e8f1f4);
+      background: var(--chip-bg, rgba(0, 163, 191, 0.12));
+      border: 1.5px solid var(--chip-border, rgba(0, 163, 191, 0.35));
+      box-shadow: 0 2px 8px var(--chip-glow, transparent);
+    }
+
+    .hex-preview {
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      word-break: break-all;
+      line-height: 1.5;
+      color: #9ad8e6;
+      background: #0a1115;
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      min-height: 2.8rem;
+    }
+
+    .mix-diagram {
+      display: grid;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+    .mix-row {
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .mix-row .src { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mix-row .data {
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
+      color: #c5e8f0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mix-row .bits {
+      font-size: 0.7rem;
+      color: var(--ok);
+      font-variant-numeric: tabular-nums;
+    }
+    .mix-row.os { border-color: rgba(62, 207, 142, 0.35); }
+    .mix-row.user { border-color: rgba(0, 163, 191, 0.35); }
+    .arrow-down {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+    .result-box {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 163, 191, 0.15), rgba(62, 207, 142, 0.1));
+      border: 1px solid rgba(0, 163, 191, 0.35);
+    }
+    .result-box strong { display: block; font-size: 0.8rem; margin-bottom: 4px; }
+    .result-box code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
+      color: #b8e6f0;
+      word-break: break-all;
+    }
+
+    .word-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .word-cell {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 6px;
+      font-size: 0.78rem;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+    }
+    .word-cell .n {
+      color: var(--muted);
+      font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 1.2rem;
+    }
+
+    .warn-banner {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(232, 93, 93, 0.1);
+      border: 1px solid rgba(232, 93, 93, 0.28);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: #f0c4c4;
+      margin-bottom: 12px;
+    }
+    .warn-banner .icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    .footer-note {
+      margin-top: 16px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; animation: fade-in 0.25s ease; }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .checkbox {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin: 12px 0;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .checkbox input { margin-top: 3px; accent-color: var(--teal); }
+
+    @media (max-width: 820px) {
+      body { flex-direction: column; align-items: center; }
+      .side { max-width: var(--phone-w); order: 2; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="side">
+    <div class="tag">Interactive mockup · not production crypto</div>
+    <h1>Entropy ritual — create wallet</h1>
+    <p>
+      Prototype of the flow we discussed: swipe-driven dice, a personal “random word,”
+      then mix with OS secure random into a 256-bit BIP39 seed.
+    </p>
+    <ul>
+      <li><strong>Swipe</strong> across the felt to throw five dice. Speed, path, and timing feed the user pool.</li>
+      <li><strong>Type</strong> any unpredictable phrase; we hash UTF-8 bytes (not just hex of the string).</li>
+      <li><strong>Always mix</strong> with device CSPRNG so a weak word or few rolls cannot break the wallet.</li>
+      <li>Then: reveal 24-word phrase → backup quiz (same as today).</li>
+    </ul>
+    <div class="note">
+      <strong>Security note for the real app:</strong> dice + typed text are
+      <em>extra</em> entropy and user ceremony — they must never be the only source.
+      Final seed = <code>SHA-256(OS ‖ swipe-metrics ‖ dice ‖ word-hash)</code> (or HKDF).
+      This HTML only simulates that with Web Crypto for the demo.
+    </div>
+  </aside>
+
+  <div class="phone" id="phone">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>XRPL · mock</span>
+    </div>
+    <div class="app-bar">
+      <button type="button" class="back" id="btnBack" aria-label="Back">‹</button>
+      <h2 id="appTitle">Create wallet</h2>
+    </div>
+
+    <div class="content">
+      <div class="steps" id="stepper"></div>
+
+      <!-- 0 Label -->
+      <section class="screen active" data-screen="0">
+        <p class="hint" style="color:var(--muted);font-size:0.88rem;line-height:1.5;margin:0 0 16px">
+          Generate a new 24-word recovery phrase. You’ll contribute randomness with dice
+          and a personal word — then write the phrase down offline.
+        </p>
+        <label class="field" for="label">Label</label>
+        <input type="text" id="label" placeholder="e.g. Main" value="Main" />
+        <p style="margin:12px 0 20px;font-size:0.8rem;color:var(--muted)">Network: Mainnet</p>
+        <button type="button" class="btn btn-primary" data-go="1">Continue to entropy ritual</button>
+      </section>
+
+      <!-- 1 Dice -->
+      <section class="screen" data-screen="1">
+        <div class="panel">
+          <h3>1 · Roll the dice</h3>
+          <p class="hint">
+            Swipe across the pad — like tossing dice on a table. Movement speed and path
+            shape the throw. Roll until the meter is full (multiple swipes OK).
+          </p>
+          <div class="dice-arena" id="arena" aria-label="Dice pad — swipe to roll">
+            <div class="dice-hint">
+              <strong>Swipe to roll</strong>
+              <span>Faster, longer swipes mix more motion into the seed</span>
+            </div>
+          </div>
+          <div class="meter-row">
+            <span>Motion entropy</span>
+            <div class="meter"><i id="motionMeter"></i></div>
+            <span class="val" id="motionVal">0%</span>
+          </div>
+          <div class="chips" id="diceChips"></div>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnToWord" disabled data-go="2">
+          Next: personal word
+        </button>
+        <button type="button" class="btn btn-ghost" data-go="0">Back</button>
+      </section>
+
+      <!-- 2 Word -->
+      <section class="screen" data-screen="2">
+        <div class="panel">
+          <h3>2 · Personal word</h3>
+          <p class="hint">
+            Type something only you would invent — nonsense, mixed languages, numbers.
+            Avoid a single dictionary word or your name. We hash the UTF-8 bytes.
+          </p>
+          <label class="field" for="word">Your contribution</label>
+          <input type="text" id="word" placeholder="e.g. purple-toaster-7!moth" autocomplete="off" spellcheck="false" />
+          <div class="meter-row">
+            <span>Word strength (rough)</span>
+            <div class="meter"><i id="wordMeter"></i></div>
+            <span class="val" id="wordVal">0%</span>
+          </div>
+          <p style="margin:12px 0 6px;font-size:0.75rem;color:var(--muted)">UTF-8 → hex (preview)</p>
+          <div class="hex-preview" id="hexPreview">—</div>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnToMix" disabled data-go="3">
+          Mix &amp; generate seed
+        </button>
+        <button type="button" class="btn btn-ghost" data-go="1">Back</button>
+      </section>
+
+      <!-- 3 Mix -->
+      <section class="screen" data-screen="3">
+        <div class="panel">
+          <h3>3 · Mix sources</h3>
+          <p class="hint">
+            Your inputs never stand alone. Device CSPRNG supplies a full 256-bit base;
+            dice motion and word are folded in so every wallet is unique to this ritual.
+          </p>
+          <div class="mix-diagram" id="mixDiagram">
+            <div class="mix-row os">
+              <span class="src">OS CSPRNG</span>
+              <span class="data" id="mixOs">…</span>
+              <span class="bits">256 bit</span>
+            </div>
+            <div class="mix-row user">
+              <span class="src">Swipe + dice</span>
+              <span class="data" id="mixDice">…</span>
+              <span class="bits" id="mixDiceBits">~</span>
+            </div>
+            <div class="mix-row user">
+              <span class="src">Word hash</span>
+              <span class="data" id="mixWord">…</span>
+              <span class="bits">256 bit</span>
+            </div>
+            <div class="arrow-down">↓ SHA-256 (domain-separated)</div>
+            <div class="result-box">
+              <strong>BIP39 entropy (256 bit)</strong>
+              <code id="mixOut">—</code>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnReveal" data-go="4">
+          Show recovery phrase
+        </button>
+        <button type="button" class="btn btn-ghost" data-go="2">Back</button>
+      </section>
+
+      <!-- 4 Reveal -->
+      <section class="screen" data-screen="4">
+        <div class="warn-banner">
+          <span class="icon">⚠</span>
+          <span>Write these 24 words on paper, in order. Never share them, store them in cloud notes, or screenshot them.</span>
+        </div>
+        <div class="word-grid" id="wordGrid"></div>
+        <label class="checkbox">
+          <input type="checkbox" id="wroteDown" />
+          <span>I wrote down my recovery phrase and stored it offline</span>
+        </label>
+        <button type="button" class="btn btn-primary" id="btnQuiz" disabled data-go="5">
+          Continue to verification
+        </button>
+        <button type="button" class="btn btn-ghost" data-go="3">Back</button>
+      </section>
+
+      <!-- 5 Done -->
+      <section class="screen" data-screen="5">
+        <div class="panel" style="text-align:center;padding:28px 16px">
+          <div style="font-size:2.4rem;margin-bottom:8px">✓</div>
+          <h3 style="margin-bottom:8px">Mock complete</h3>
+          <p class="hint" style="margin:0">
+            In the real app this is the backup quiz + secure save.
+            This page is UI + entropy-mixing demo only — not a live wallet.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnRestart">Start over</button>
+      </section>
+
+      <p class="footer-note">
+        Screenshots would be blocked on Android (FLAG_SECURE). Mockup for design review only.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Demo-only crypto. Real app would use Dart Random.secure / platform RNG
+     * and BIP39 from blockchain_utils — never this browser demo for funds.
+     */
+    const WORDLIST = [
+      "abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse",
+      "access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act",
+      "action","actor","actress","actual","adapt","add","addict","address","adjust","admit",
+      "adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent",
+      "agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert",
+      "alien","all","alley","allow","almost","alone","alpha","already","also","alter",
+      "always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger",
+      "angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique",
+      "anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic",
+      "area","arena","argue","arm","armed","armor","army","around","arrange","arrest",
+      "arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset",
+      "assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction",
+      "audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake",
+      "aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge",
+      "bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain",
+      "barrel","base","basic","basket","battle","beach","bean","beauty","because","become",
+      "beef","before","begin","behave","behind","believe","below","belt","bench","benefit",
+      "best","betray","better","between","beyond","bicycle","bid","bike","bind","biology",
+      "bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless",
+      "blind","blood","blossom","blouse","blue","blur","blush","board","boat","body",
+      "boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss",
+      "bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread",
+      "breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze",
+      "broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb",
+      "bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy",
+      "butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call",
+      "calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas",
+      "canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry",
+      "cart","case","cash","casino","castle","casual","cat","catalog","catch","category",
+      "cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century",
+      "cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase",
+      "chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child",
+      "chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle",
+      "citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk",
+      "clever","click","client","cliff","climb","clinic","clip","clock","clog","close",
+      "cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut",
+      "code","coffee","coil","coin","collect","color","column","combine","come","comfort",
+      "comic","common","company","concert","conduct","confirm","congress","connect","consider","control",
+      "convince","cook","cool","copper","copy","coral","core","corn","correct","cost",
+      "cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle",
+      "craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek",
+      "crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial",
+      "cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup",
+      "cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad",
+      "damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal",
+      "debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense",
+      "define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny",
+      "depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk",
+      "despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond",
+      "diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur",
+      "direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance",
+      "divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain",
+      "donate","donkey","donor","door","dose","double","dove","draft","dragon","drama",
+      "drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop",
+      "drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf",
+      "dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo",
+      "ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow",
+      "elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody",
+      "embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless",
+      "endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough",
+      "enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip",
+      "era","erase","erode","erosion","error","erupt","escape","essay","essence","estate",
+      "eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange",
+      "excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit",
+      "exotic","expand","expect","expire","explain","expose","express","extend","extra","eye",
+      "eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame",
+      "family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father",
+      "fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female",
+      "fence","festival","fetch","fever","few","fiber","fiction","field","figure","file",
+      "film","filter","final","find","fine","finger","finish","fire","firm","first",
+      "fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor",
+      "flee","flight","flip","float","flock","floor","flower","fluid","flush","fly",
+      "foam","focus","fog","foil","fold","follow","food","foot","force","forest",
+      "forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile",
+      "frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen",
+      "fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy",
+      "gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp",
+      "gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture",
+      "ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance",
+      "glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue",
+      "goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown",
+      "grab","grace","grain","grant","grape","grass","gravity","great","green","grid",
+      "grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt",
+      "guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy",
+      "harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health",
+      "heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden",
+      "high","hill","hint","hip","hire","history","hobby","hockey","hold","hole",
+      "holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital",
+      "host","hotel","hour","hover","hub","huge","human","humble","humor","hundred",
+      "hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea",
+      "identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune",
+      "impact","impose","improve","impulse","inch","include","income","increase","index","indicate",
+      "indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury",
+      "inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install",
+      "intact","interest","into","invest","invite","involve","iron","island","isolate","issue",
+      "item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel",
+      "job","join","joke","journey","joy","judge","juice","jump","jungle","junior",
+      "junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney",
+      "kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife",
+      "knock","know","lab","label","labor","ladder","lady","lake","lamp","language",
+      "laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit",
+      "layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal",
+      "legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level",
+      "liar","liberty","library","license","life","lift","light","like","limb","limit",
+      "link","lion","liquid","list","little","live","lizard","load","loan","lobster",
+      "local","lock","logic","lonely","long","loop","lottery","loud","lounge","love",
+      "loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad",
+      "magic","magnet","maid","mail","main","major","make","mammal","man","manage",
+      "mandate","mango","mansion","manual","maple","marble","march","margin","marine","market",
+      "marriage","mask","mass","master","match","material","math","matrix","matter","maximum",
+      "maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt",
+      "member","memory","mention","menu","mercy","merge","merit","merry","mesh","message",
+      "metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor",
+      "minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile",
+      "model","modify","mom","moment","monitor","monkey","monster","month","moon","moral",
+      "more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie",
+      "much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual",
+      "myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature",
+      "near","neck","need","negative","neglect","neither","nephew","nerve","nest","net",
+      "network","neutral","never","news","next","nice","night","noble","noise","nominee",
+      "noodle","normal","north","nose","notable","note","nothing","notice","novel","now",
+      "nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe",
+      "obtain","obvious","occur","ocean","october","odor","off","offer","office","often",
+      "oil","okay","old","olive","olympic","omit","once","one","onion","online",
+      "only","open","opera","opinion","oppose","option","orange","orbit","orchard","order",
+      "ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output",
+      "outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact",
+      "paddle","page","pair","palace","palm","panda","panel","panic","panther","paper",
+      "parade","parent","park","parrot","party","pass","patch","path","patient","patrol",
+      "pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen",
+      "penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo",
+      "phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot",
+      "pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate",
+      "play","please","pledge","pluck","plug","plunge","poem","poet","point","polar",
+      "pole","police","pond","pony","pool","popular","portion","position","possible","post",
+      "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare",
+      "present","pretty","prevent","price","pride","primary","print","priority","prison","private",
+      "prize","problem","process","produce","profit","program","project","promote","proof","property",
+      "prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin",
+      "punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle",
+      "pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit",
+      "raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp",
+      "ranch","random","range","rapid","rare","rate","rather","raven","raw","razor",
+      "ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle",
+      "reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release",
+      "relief","rely","remain","remember","remind","remove","render","renew","rent","reopen",
+      "repair","repeat","replace","report","require","rescue","resemble","resist","resource","response",
+      "result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib",
+      "ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot",
+      "ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket",
+      "romance","roof","rookie","room","rose","rotate","rough","round","route","royal",
+      "rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness",
+      "safe","sail","salad","salmon","salon","salt","salute","same","sample","sand",
+      "satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter",
+      "scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script",
+      "scrub","sea","search","season","seat","second","secret","section","security","seed",
+      "seek","segment","select","sell","seminar","senior","sense","sentence","series","service",
+      "session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell",
+      "sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop",
+      "short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side",
+      "siege","sight","sign","silent","silk","silly","silver","similar","simple","since",
+      "sing","siren","sister","situate","six","size","skate","sketch","ski","skill",
+      "skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight",
+      "slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth",
+      "snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda",
+      "soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry",
+      "sort","soul","sound","soup","source","south","space","spare","spatial","spawn",
+      "speak","special","speed","spell","spend","sphere","spice","spider","spike","spin",
+      "spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring",
+      "spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp",
+      "stand","start","state","stay","steak","steel","stem","step","stereo","stick",
+      "still","sting","stock","stomach","stone","stool","story","stove","strategy","street",
+      "strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway",
+      "success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny",
+      "sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey",
+      "suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim",
+      "swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag",
+      "tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi",
+      "teach","team","tell","ten","tenant","tennis","tent","term","test","text",
+      "thank","that","theme","then","theory","there","they","thing","this","thought",
+      "three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber",
+      "time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler",
+      "toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool",
+      "tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist",
+      "toward","tower","town","toy","track","trade","traffic","tragic","train","transfer",
+      "trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick",
+      "trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust",
+      "truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle",
+      "twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella",
+      "unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform",
+      "unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade",
+      "uphold","upon","upper","upset","urban","urge","usage","use","used","useful",
+      "useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van",
+      "vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue",
+      "verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory",
+      "video","view","village","vintage","violin","virtual","virus","visa","visit","visual",
+      "vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage",
+      "wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash",
+      "wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather",
+      "web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat",
+      "wheel","when","where","whip","whisper","wide","width","wife","wild","will",
+      "win","window","wine","wing","wink","winner","winter","wire","wisdom","wise",
+      "wish","witness","wolf","woman","wonder","wood","wool","word","work","world",
+      "worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year",
+      "yellow","you","young","youth","zebra","zero","zone","zoo"
+    ];
+
+    const STEP_LABELS = ["Label", "Dice", "Word", "Mix", "Backup", "Done"];
+    let screen = 0;
+    let motionScore = 0;
+    let diceFaces = [1, 2, 3, 4, 5];
+    let swipeSamples = [];
+    let lastEntropyHex = null;
+    let lastMnemonic = null;
+
+    const $ = (sel, el = document) => el.querySelector(sel);
+    const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+
+    function toHex(buf) {
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function sha256(data) {
+      const enc = typeof data === "string" ? new TextEncoder().encode(data) : data;
+      return crypto.subtle.digest("SHA-256", enc);
+    }
+
+    function pipMap(n) {
+      // positions in 3x3: 0 1 2 / 3 4 5 / 6 7 8
+      const maps = {
+        1: [4],
+        2: [0, 8],
+        3: [0, 4, 8],
+        4: [0, 2, 6, 8],
+        5: [0, 2, 4, 6, 8],
+        6: [0, 2, 3, 5, 6, 8],
+      };
+      return maps[n] || [];
+    }
+
+    function pipsHtml(face) {
+      const on = new Set(pipMap(face));
+      return `<div class="pips">${[...Array(9)]
+        .map((_, i) => `<div class="pip${on.has(i) ? " on" : ""}"></div>`)
+        .join("")}</div>`;
+    }
+
+    /**
+     * Cube rotation (degrees) that brings face N to the camera (+Z).
+     * Must match .die-face.fN placement above.
+     * Applied as: transform: rotateX(x) rotateY(y) rotateZ(z)
+     */
+    const FACE_ROT = {
+      1: { x: 0, y: 0, z: 0 },
+      2: { x: -90, y: 0, z: 0 },  // top → front
+      3: { x: 0, y: -90, z: 0 },  // right → front
+      4: { x: 0, y: 90, z: 0 },   // left → front
+      5: { x: 90, y: 0, z: 0 },   // bottom → front
+      6: { x: 0, y: 180, z: 0 },  // back → front
+    };
+
+    /** Outward normals of each face in cube-local space (CSS: +Y down, +Z toward camera). */
+    const FACE_NORMALS = {
+      1: [0, 0, 1],
+      2: [0, -1, 0],
+      3: [1, 0, 0],
+      4: [-1, 0, 0],
+      5: [0, 1, 0],
+      6: [0, 0, -1],
+    };
+
+    /**
+     * Which face points most toward the camera after rotateX → rotateY → rotateZ
+     * (CSS applies listed transforms right-to-left, so local vector gets Rz then Ry then Rx).
+     */
+    function visibleFace(rxDeg, ryDeg, rzDeg) {
+      const rx = (rxDeg * Math.PI) / 180;
+      const ry = (ryDeg * Math.PI) / 180;
+      const rz = (rzDeg * Math.PI) / 180;
+      const cx = Math.cos(rx), sx = Math.sin(rx);
+      const cy = Math.cos(ry), sy = Math.sin(ry);
+      const cz = Math.cos(rz), sz = Math.sin(rz);
+
+      function transformNormal(nx, ny, nz) {
+        // Rz
+        let x = nx * cz - ny * sz;
+        let y = nx * sz + ny * cz;
+        let z = nz;
+        // Ry
+        let x2 = x * cy + z * sy;
+        let y2 = y;
+        let z2 = -x * sy + z * cy;
+        // Rx
+        let x3 = x2;
+        let y3 = y2 * cx - z2 * sx;
+        let z3 = y2 * sx + z2 * cx;
+        return [x3, y3, z3];
+      }
+
+      let best = 1;
+      let bestZ = -Infinity;
+      for (let face = 1; face <= 6; face++) {
+        const [nx, ny, nz] = FACE_NORMALS[face];
+        const [, , wz] = transformNormal(nx, ny, nz);
+        if (wz > bestZ) {
+          bestZ = wz;
+          best = face;
+        }
+      }
+      return best;
+    }
+
+    const DIE_SIZE = 48;
+    /** Minimum center-to-center distance so cubes don't stack (a bit > diagonal). */
+    const DIE_SEP = DIE_SIZE + 10;
+    const arena = $("#arena");
+    /** @type {{ wrap: HTMLElement, cube: HTMLElement, x: number, y: number, rx: number, ry: number, rz: number, vx: number, vy: number, wrx: number, wry: number, wrz: number, settling: boolean, face: number }[]} */
+    let dice = [];
+    let physicsRaf = 0;
+    let settling = false;
+
+    /** Unique color per die — chips use the same palette. */
+    const DIE_COLORS = [
+      { name: "coral", hi: "#ffb4a8", mid: "#f07167", lo: "#c44a42", border: "rgba(80,20,16,0.25)", pip: "#3a1210", pipHi: "#6b2824", chipBg: "rgba(240,113,103,0.2)", chipFg: "#ffc9c2", chipBorder: "rgba(240,113,103,0.55)", chipGlow: "rgba(240,113,103,0.2)" },
+      { name: "amber", hi: "#ffe6a3", mid: "#f0b429", lo: "#c48a0a", border: "rgba(80,55,0,0.25)", pip: "#3d2e05", pipHi: "#6b5010", chipBg: "rgba(240,180,41,0.18)", chipFg: "#ffe6a3", chipBorder: "rgba(240,180,41,0.55)", chipGlow: "rgba(240,180,41,0.18)" },
+      { name: "mint", hi: "#b8f5d4", mid: "#3ecf8e", lo: "#1f9a62", border: "rgba(10,60,40,0.25)", pip: "#0c2e1c", pipHi: "#1a5032", chipBg: "rgba(62,207,142,0.18)", chipFg: "#b8f5d4", chipBorder: "rgba(62,207,142,0.55)", chipGlow: "rgba(62,207,142,0.18)" },
+      { name: "sky", hi: "#a8e8f5", mid: "#00a3bf", lo: "#007a90", border: "rgba(0,40,50,0.28)", pip: "#062830", pipHi: "#0d4450", chipBg: "rgba(0,163,191,0.18)", chipFg: "#a8e8f5", chipBorder: "rgba(0,163,191,0.55)", chipGlow: "rgba(0,163,191,0.2)" },
+      { name: "violet", hi: "#d4c4ff", mid: "#9b7cf0", lo: "#6b4fc4", border: "rgba(35,20,70,0.28)", pip: "#1e1240", pipHi: "#352268", chipBg: "rgba(155,124,240,0.2)", chipFg: "#d4c4ff", chipBorder: "rgba(155,124,240,0.55)", chipGlow: "rgba(155,124,240,0.2)" },
+    ];
+
+    function applyDieColor(el, colorIndex) {
+      const c = DIE_COLORS[colorIndex % DIE_COLORS.length];
+      el.style.setProperty("--die-face-hi", c.hi);
+      el.style.setProperty("--die-face-mid", c.mid);
+      el.style.setProperty("--die-face-lo", c.lo);
+      el.style.setProperty("--die-border", c.border);
+      el.style.setProperty("--die-pip", c.pip);
+      el.style.setProperty("--die-pip-hi", c.pipHi);
+    }
+
+    function buildCubeEl(colorIndex) {
+      const wrap = document.createElement("div");
+      wrap.className = "die-wrap settled";
+      wrap.dataset.color = String(colorIndex);
+      applyDieColor(wrap, colorIndex);
+      wrap.innerHTML = `
+        <div class="die-shadow"></div>
+        <div class="die-cube">
+          ${[1, 2, 3, 4, 5, 6]
+            .map((n) => `<div class="die-face f${n}" data-face="${n}">${pipsHtml(n)}</div>`)
+            .join("")}
+        </div>`;
+      return wrap;
+    }
+
+    function applyDieTransform(d) {
+      // Slight Z lift while rolling for a floating feel
+      const lift = Math.min(18, Math.hypot(d.vx, d.vy) * 0.35 + Math.hypot(d.wrx, d.wry) * 0.02);
+      d.wrap.style.transform = `translate3d(${d.x}px, ${d.y}px, ${lift}px)`;
+      // z last so face-up settle can zero it cleanly
+      d.cube.style.transform =
+        `rotateX(${d.rx}deg) rotateY(${d.ry}deg) rotateZ(${d.rz}deg)`;
+      d.face = visibleFace(d.rx, d.ry, d.rz);
+    }
+
+    /** Sync chip strip from the face each die is actually showing. */
+    function syncFacesFromView() {
+      diceFaces = dice.map((d) => d.face || visibleFace(d.rx, d.ry, d.rz));
+      updateDiceChips();
+    }
+
+    function clampToBounds(d, b) {
+      d.x = Math.max(b.minX, Math.min(b.maxX, d.x));
+      d.y = Math.max(b.minY, Math.min(b.maxY, d.y));
+    }
+
+    /**
+     * Circle-circle separation + bounce so dice never occupy the same spot.
+     * Uses top-left positions (same as CSS translate).
+     */
+    function resolveCollisions(opts = {}) {
+      const { bounce = true, iterations = 4 } = opts;
+      const b = bounds();
+      const minDist = DIE_SEP;
+      const cx = (d) => d.x + DIE_SIZE / 2;
+      const cy = (d) => d.y + DIE_SIZE / 2;
+
+      for (let iter = 0; iter < iterations; iter++) {
+        for (let i = 0; i < dice.length; i++) {
+          for (let j = i + 1; j < dice.length; j++) {
+            const a = dice[i];
+            const c = dice[j];
+            let dx = cx(c) - cx(a);
+            let dy = cy(c) - cy(a);
+            let dist = Math.hypot(dx, dy);
+
+            // Identical centers — push apart on a stable axis
+            if (dist < 0.001) {
+              const angle = (i * 1.7 + j * 2.3 + iter) % (Math.PI * 2);
+              dx = Math.cos(angle);
+              dy = Math.sin(angle);
+              dist = 0.001;
+            }
+
+            if (dist < minDist) {
+              const overlap = (minDist - dist) / 2;
+              const nx = dx / dist;
+              const ny = dy / dist;
+              a.x -= nx * overlap;
+              a.y -= ny * overlap;
+              c.x += nx * overlap;
+              c.y += ny * overlap;
+              clampToBounds(a, b);
+              clampToBounds(c, b);
+
+              if (bounce && !a.settling && !c.settling) {
+                // Exchange velocity along collision normal (elastic-ish)
+                const dvx = a.vx - c.vx;
+                const dvy = a.vy - c.vy;
+                const vn = dvx * nx + dvy * ny;
+                if (vn > 0) {
+                  // already separating
+                } else {
+                  const rest = 0.55;
+                  const impulse = -(1 + rest) * vn * 0.5;
+                  a.vx += impulse * nx;
+                  a.vy += impulse * ny;
+                  c.vx -= impulse * nx;
+                  c.vy -= impulse * ny;
+                  // Spin kick on impact
+                  a.wrz += -vn * 0.8;
+                  c.wrz += vn * 0.8;
+                  a.wrx += ny * 4;
+                  a.wry += -nx * 4;
+                  c.wrx += -ny * 4;
+                  c.wry += nx * 4;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /** Relax positions so no two dice overlap; keep near preferred spots. */
+    function nonOverlappingTargets(preferred) {
+      const b = bounds();
+      const pts = preferred.map((p) => ({
+        x: Math.max(b.minX, Math.min(b.maxX, p.x)),
+        y: Math.max(b.minY, Math.min(b.maxY, p.y)),
+      }));
+      const minDist = DIE_SEP;
+
+      for (let iter = 0; iter < 40; iter++) {
+        for (let i = 0; i < pts.length; i++) {
+          for (let j = i + 1; j < pts.length; j++) {
+            let dx = pts[j].x - pts[i].x;
+            let dy = pts[j].y - pts[i].y;
+            let dist = Math.hypot(dx, dy);
+            if (dist < 0.001) {
+              dx = Math.cos(i + j);
+              dy = Math.sin(i + j);
+              dist = 0.001;
+            }
+            if (dist < minDist) {
+              const push = (minDist - dist) / 2 + 0.5;
+              const nx = dx / dist;
+              const ny = dy / dist;
+              pts[i].x -= nx * push;
+              pts[i].y -= ny * push;
+              pts[j].x += nx * push;
+              pts[j].y += ny * push;
+            }
+          }
+          pts[i].x = Math.max(b.minX, Math.min(b.maxX, pts[i].x));
+          pts[i].y = Math.max(b.minY, Math.min(b.maxY, pts[i].y));
+        }
+      }
+      return pts;
+    }
+
+    function placeDice() {
+      arena.querySelectorAll(".die-wrap").forEach((el) => el.remove());
+      dice = [];
+      const w = arena.clientWidth || 340;
+      const h = arena.clientHeight || 260;
+      // Spread well apart so start pose never stacks
+      const positions = [
+        [0.14, 0.2], [0.5, 0.14], [0.82, 0.22],
+        [0.28, 0.58], [0.68, 0.55],
+      ];
+      positions.forEach(([px, py], i) => {
+        const wrap = buildCubeEl(i);
+        arena.appendChild(wrap);
+        // Start each die face-up on a known value (no random Z tilt — that broke labels)
+        const face = diceFaces[i] || 1 + (i % 6);
+        const fr = FACE_ROT[face];
+        const d = {
+          wrap,
+          cube: wrap.querySelector(".die-cube"),
+          colorIndex: i,
+          x: w * px - DIE_SIZE / 2,
+          y: h * py - DIE_SIZE / 2,
+          rx: fr.x,
+          ry: fr.y,
+          rz: fr.z,
+          vx: 0,
+          vy: 0,
+          wrx: 0,
+          wry: 0,
+          wrz: 0,
+          settling: false,
+          face,
+        };
+        dice.push(d);
+        applyDieTransform(d);
+      });
+      resolveCollisions({ bounce: false, iterations: 8 });
+      dice.forEach(applyDieTransform);
+      syncFacesFromView();
+    }
+
+    function updateDiceChips() {
+      const chips = $("#diceChips");
+      chips.innerHTML = diceFaces
+        .map((f, i) => {
+          const c = DIE_COLORS[i % DIE_COLORS.length];
+          return `<span class="chip" style="
+            --chip-bg:${c.chipBg};
+            --chip-fg:${c.chipFg};
+            --chip-border:${c.chipBorder};
+            --chip-glow:${c.chipGlow};
+          " title="${c.name}">${f}</span>`;
+        })
+        .join("");
+    }
+
+    function setMotion(score) {
+      motionScore = Math.min(100, score);
+      $("#motionMeter").style.width = motionScore + "%";
+      $("#motionVal").textContent = Math.round(motionScore) + "%";
+      $("#btnToWord").disabled = motionScore < 80;
+      if (motionScore > 0) arena.classList.add("has-result");
+    }
+
+    function bounds() {
+      return {
+        maxX: Math.max(8, (arena.clientWidth || 340) - DIE_SIZE - 8),
+        maxY: Math.max(8, (arena.clientHeight || 260) - DIE_SIZE - 20),
+        minX: 8,
+        minY: 8,
+      };
+    }
+
+    function stopPhysics() {
+      if (physicsRaf) {
+        cancelAnimationFrame(physicsRaf);
+        physicsRaf = 0;
+      }
+    }
+
+    function startPhysics(onRest) {
+      stopPhysics();
+      let last = performance.now();
+      let stillFrames = 0;
+
+      function tick(now) {
+        const dt = Math.min(32, now - last) / 16.67; // ~frames
+        last = now;
+        const b = bounds();
+        let anyMoving = false;
+
+        for (const d of dice) {
+          if (d.settling) continue;
+
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          d.rx += d.wrx * dt;
+          d.ry += d.wry * dt;
+          d.rz += d.wrz * dt;
+
+          // Wall bounce
+          if (d.x < b.minX) {
+            d.x = b.minX;
+            d.vx = Math.abs(d.vx) * 0.72;
+            d.wry *= -0.8;
+            d.wrz += d.vx * 0.4;
+          } else if (d.x > b.maxX) {
+            d.x = b.maxX;
+            d.vx = -Math.abs(d.vx) * 0.72;
+            d.wry *= -0.8;
+            d.wrz += d.vx * 0.4;
+          }
+          if (d.y < b.minY) {
+            d.y = b.minY;
+            d.vy = Math.abs(d.vy) * 0.72;
+            d.wrx *= -0.8;
+          } else if (d.y > b.maxY) {
+            d.y = b.maxY;
+            d.vy = -Math.abs(d.vy) * 0.72;
+            d.wrx *= -0.8;
+            d.vx *= 0.92;
+          }
+
+          // Friction / angular damping
+          const speed = Math.hypot(d.vx, d.vy);
+          const friction = speed > 6 ? 0.985 : 0.94;
+          d.vx *= Math.pow(friction, dt);
+          d.vy *= Math.pow(friction, dt);
+          d.wrx *= Math.pow(0.965, dt);
+          d.wry *= Math.pow(0.965, dt);
+          d.wrz *= Math.pow(0.96, dt);
+
+          if (speed < 2.5) {
+            d.vx *= Math.pow(0.88, dt);
+            d.vy *= Math.pow(0.88, dt);
+          }
+        }
+
+        // Keep dice from stacking while rolling
+        resolveCollisions({ bounce: true, iterations: 5 });
+
+        for (const d of dice) {
+          if (d.settling) continue;
+          applyDieTransform(d);
+          if (
+            Math.hypot(d.vx, d.vy) > 0.4 ||
+            Math.hypot(d.wrx, d.wry, d.wrz) > 1.5
+          ) {
+            anyMoving = true;
+          }
+        }
+        // Labels track the face actually toward the camera while tumbling
+        syncFacesFromView();
+
+        // Require a few still frames so a bounce doesn't restart settle too early
+        if (anyMoving) {
+          stillFrames = 0;
+          physicsRaf = requestAnimationFrame(tick);
+        } else {
+          stillFrames++;
+          // Final separation pass while nearly stopped
+          resolveCollisions({ bounce: false, iterations: 10 });
+          dice.forEach(applyDieTransform);
+          syncFacesFromView();
+          if (stillFrames < 4) {
+            physicsRaf = requestAnimationFrame(tick);
+          } else {
+            physicsRaf = 0;
+            if (onRest) onRest();
+          }
+        }
+      }
+
+      physicsRaf = requestAnimationFrame(tick);
+    }
+
+    /**
+     * Snap each die to a clean face orientation with spin-down,
+     * landing on non-overlapping rest positions.
+     * Chips always reflect visibleFace(), never a disconnected random list.
+     */
+    function settleToFaces(finalFaces, swipeImpulse) {
+      settling = true;
+      const duration = 900 + Math.min(500, swipeImpulse * 40);
+
+      // Preferred rest near current spots, then force non-overlap
+      const preferred = dice.map((d) => ({
+        x: d.x + (Math.random() - 0.5) * 14,
+        y: d.y + (Math.random() - 0.5) * 12,
+      }));
+      const targets = nonOverlappingTargets(preferred);
+
+      let finished = 0;
+
+      dice.forEach((d, i) => {
+        d.settling = true;
+        d.vx = 0;
+        d.vy = 0;
+        d.wrx = 0;
+        d.wry = 0;
+        d.wrz = 0;
+        d.wrap.classList.remove("rolling");
+        d.wrap.classList.add("settled");
+
+        const intended = finalFaces[i];
+        const target = FACE_ROT[intended];
+        // Extra full turns on the dominant axis for that face
+        const turns = 2 + (i % 3);
+        const sign = i % 2 === 0 ? 1 : -1;
+        const startRx = d.rx;
+        const startRy = d.ry;
+        const startRz = d.rz;
+        // Land on exact face rotation with z = 0 (no residual tilt)
+        const endRx = target.x + (target.x !== 0 || target.y === 0 ? sign * turns * 360 : 0);
+        const endRy = target.y + (target.y !== 0 ? -sign * turns * 360 : sign * Math.floor(turns / 2) * 360);
+        // Always ease Z to 0 so pips sit square and mapping stays valid
+        const endRz = 0;
+
+        const startX = d.x;
+        const startY = d.y;
+        const clampX = targets[i].x;
+        const clampY = targets[i].y;
+
+        const t0 = performance.now();
+        const ease = (t) => {
+          const c1 = 1.15;
+          const c3 = c1 + 1;
+          return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+        };
+
+        function settleFrame(now) {
+          let t = (now - t0) / duration;
+          if (t >= 1) t = 1;
+          const e = t < 0.85
+            ? 1 - Math.pow(1 - t / 0.85, 3)
+            : 0.85 + 0.15 * ease((t - 0.85) / 0.15);
+
+          d.rx = startRx + (endRx - startRx) * Math.min(1, e);
+          d.ry = startRy + (endRy - startRy) * Math.min(1, e);
+          d.rz = startRz + (endRz - startRz) * Math.min(1, e);
+          d.x = startX + (clampX - startX) * (1 - Math.pow(1 - Math.min(1, t), 2));
+          d.y = startY + (clampY - startY) * (1 - Math.pow(1 - Math.min(1, t), 2));
+
+          d.wrap.style.transform = `translate3d(${d.x}px, ${d.y}px, 0px)`;
+          d.cube.style.transform =
+            `rotateX(${d.rx}deg) rotateY(${d.ry}deg) rotateZ(${d.rz}deg)`;
+          d.face = visibleFace(d.rx, d.ry, d.rz);
+
+          if (t < 1) {
+            // Live labels while spinning
+            if (i === 0) syncFacesFromView();
+            requestAnimationFrame(settleFrame);
+          } else {
+            // Hard snap to the intended face orientation (source of truth)
+            d.rx = target.x;
+            d.ry = target.y;
+            d.rz = 0;
+            d.x = clampX;
+            d.y = clampY;
+            d.face = intended;
+            applyDieTransform(d);
+            // If geometry still disagrees, trust the rotation table and re-snap
+            if (visibleFace(d.rx, d.ry, d.rz) !== intended) {
+              d.rx = target.x;
+              d.ry = target.y;
+              d.rz = 0;
+              d.cube.style.transform =
+                `rotateX(${d.rx}deg) rotateY(${d.ry}deg) rotateZ(0deg)`;
+              d.face = intended;
+            }
+            d.settling = false;
+            finished++;
+            if (finished >= dice.length) {
+              resolveCollisions({ bounce: false, iterations: 16 });
+              // Re-apply exact face rotations after separation (collision only moves x/y)
+              dice.forEach((die, j) => {
+                const fr = FACE_ROT[finalFaces[j]];
+                die.rx = fr.x;
+                die.ry = fr.y;
+                die.rz = 0;
+                die.face = finalFaces[j];
+                applyDieTransform(die);
+              });
+              // Chips = intended faces (must match view after forced snap)
+              diceFaces = finalFaces.slice();
+              updateDiceChips();
+              // Safety: if any visible face still disagrees, overwrite chips from view
+              // and also fix rotation from the reverse map
+              let mismatch = false;
+              dice.forEach((die, j) => {
+                const shown = visibleFace(die.rx, die.ry, die.rz);
+                if (shown !== finalFaces[j]) {
+                  mismatch = true;
+                  die.face = shown;
+                }
+              });
+              if (mismatch) syncFacesFromView();
+              settling = false;
+            }
+          }
+        }
+        setTimeout(() => requestAnimationFrame(settleFrame), i * 55);
+      });
+    }
+
+    // Pointer / swipe physics
+    let dragging = false;
+    let lastP = null;
+    let swipePath = [];
+    let swipeVx = 0;
+    let swipeVy = 0;
+
+    function pointerPos(e) {
+      const r = arena.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return { x: src.clientX - r.left, y: src.clientY - r.top, t: performance.now() };
+    }
+
+    function onDown(e) {
+      if (settling) return;
+      e.preventDefault();
+      dragging = true;
+      lastP = pointerPos(e);
+      swipePath = [lastP];
+      swipeVx = 0;
+      swipeVy = 0;
+      arena.classList.add("rolling");
+      stopPhysics();
+      dice.forEach((d) => {
+        d.settling = false;
+        d.wrap.classList.add("rolling");
+        d.wrap.classList.remove("settled");
+      });
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      e.preventDefault();
+      const p = pointerPos(e);
+      const trail = document.createElement("div");
+      trail.className = "swipe-trail";
+      trail.style.left = p.x + "px";
+      trail.style.top = p.y + "px";
+      arena.appendChild(trail);
+      setTimeout(() => trail.remove(), 500);
+
+      if (lastP) {
+        const dx = p.x - lastP.x;
+        const dy = p.y - lastP.y;
+        const dt = Math.max(1, p.t - lastP.t);
+        const speed = Math.hypot(dx, dy) / dt;
+        swipePath.push({ ...p, speed });
+        swipeVx = dx / dt * 12;
+        swipeVy = dy / dt * 12;
+
+        const b = bounds();
+        dice.forEach((d, i) => {
+          // Spread impulse so they don't all follow the exact same path
+          const force = 0.45 + i * 0.08;
+          const spreadX = Math.cos(i * 1.4) * 0.35;
+          const spreadY = Math.sin(i * 1.4) * 0.35;
+          d.vx = dx * force * 0.45 + spreadX * Math.abs(dx) + (Math.random() - 0.5) * 1.2;
+          d.vy = dy * force * 0.45 + spreadY * Math.abs(dy) + (Math.random() - 0.5) * 1.2;
+          d.x += d.vx;
+          d.y += d.vy;
+          clampToBounds(d, b);
+          // Tumbling while dragged
+          d.wrx = dy * 1.8 + (Math.random() - 0.5) * 4;
+          d.wry = -dx * 1.8 + (Math.random() - 0.5) * 4;
+          d.wrz = (dx + dy) * 0.4;
+          d.rx += d.wrx * 0.35;
+          d.ry += d.wry * 0.35;
+          d.rz += d.wrz * 0.35;
+        });
+        resolveCollisions({ bounce: true, iterations: 4 });
+        dice.forEach(applyDieTransform);
+        syncFacesFromView();
+      }
+      lastP = p;
+    }
+
+    function onUp(e) {
+      if (!dragging) return;
+      dragging = false;
+      arena.classList.remove("rolling");
+
+      let pathLen = 0;
+      let speedSum = 0;
+      for (let i = 1; i < swipePath.length; i++) {
+        const a = swipePath[i - 1], b = swipePath[i];
+        pathLen += Math.hypot(b.x - a.x, b.y - a.y);
+        speedSum += b.speed || 0;
+      }
+      const duration = swipePath.length
+        ? swipePath[swipePath.length - 1].t - swipePath[0].t
+        : 0;
+      const contribution = Math.min(
+        45,
+        pathLen / 18 + speedSum * 8 + Math.min(duration / 40, 10)
+      );
+      setMotion(motionScore + contribution);
+
+      // Impart throw velocity from swipe, fanned so they don't all land together
+      const impulse = Math.hypot(swipeVx, swipeVy);
+      dice.forEach((d, i) => {
+        const angle = (i / dice.length) * Math.PI * 2 + Math.random() * 0.4;
+        const fan = 2.5 + i * 0.4;
+        const spread = 0.7 + i * 0.1;
+        d.vx = swipeVx * spread + Math.cos(angle) * fan + (Math.random() - 0.5) * 3;
+        d.vy = swipeVy * spread + Math.sin(angle) * fan + (Math.random() - 0.5) * 3;
+        if (Math.hypot(d.vx, d.vy) < 3) {
+          d.vx += Math.cos(angle) * 6;
+          d.vy += Math.sin(angle) * 6 - 2;
+        }
+        d.wrx = -d.vy * 3.5 + (Math.random() - 0.5) * 20;
+        d.wry = d.vx * 3.5 + (Math.random() - 0.5) * 20;
+        d.wrz = (Math.random() - 0.5) * 25;
+        d.wrap.classList.add("rolling");
+        d.wrap.classList.remove("settled");
+      });
+      resolveCollisions({ bounce: true, iterations: 6 });
+
+      const finalFaces = dice.map(() => 1 + Math.floor(Math.random() * 6));
+
+      startPhysics(() => {
+        settleToFaces(finalFaces, impulse);
+      });
+
+      // faces filled after settle via sync; keep intended for entropy payload
+      swipeSamples.push({
+        pathLen,
+        duration,
+        speedAvg: speedSum / Math.max(1, swipePath.length),
+        points: swipePath.slice(0, 64).map((p) => [Math.round(p.x), Math.round(p.y), Math.round(p.t % 1e6)]),
+        faces: finalFaces,
+        t: Date.now(),
+      });
+      swipePath = [];
+    }
+
+    ["pointerdown", "mousedown", "touchstart"].forEach((ev) =>
+      arena.addEventListener(ev, onDown, { passive: false })
+    );
+    ["pointermove", "mousemove", "touchmove"].forEach((ev) =>
+      arena.addEventListener(ev, onMove, { passive: false })
+    );
+    ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel"].forEach((ev) =>
+      arena.addEventListener(ev, onUp)
+    );
+
+    // Word strength heuristic (demo only)
+    function wordStrength(s) {
+      if (!s) return 0;
+      let score = 0;
+      score += Math.min(40, s.length * 3);
+      if (/[A-Z]/.test(s) && /[a-z]/.test(s)) score += 10;
+      if (/\d/.test(s)) score += 10;
+      if (/[^A-Za-z0-9\s]/.test(s)) score += 12;
+      if (s.trim().includes(" ")) score += 10;
+      if (s.length >= 12) score += 10;
+      // Penalize pure lowercase single token short words
+      if (/^[a-z]{1,8}$/.test(s.trim())) score = Math.min(score, 25);
+      return Math.min(100, score);
+    }
+
+    $("#word").addEventListener("input", async (e) => {
+      const s = e.target.value;
+      const str = wordStrength(s);
+      $("#wordMeter").style.width = str + "%";
+      $("#wordVal").textContent = str + "%";
+      $("#btnToMix").disabled = str < 35;
+      if (!s) {
+        $("#hexPreview").textContent = "—";
+        return;
+      }
+      const bytes = new TextEncoder().encode(s);
+      $("#hexPreview").textContent = toHex(bytes);
+    });
+
+    $("#wroteDown").addEventListener("change", (e) => {
+      $("#btnQuiz").disabled = !e.target.checked;
+    });
+
+    function renderStepper() {
+      const el = $("#stepper");
+      el.innerHTML = STEP_LABELS.map((label, i) => {
+        const cls = i < screen ? "done" : i === screen ? "active" : "";
+        const line =
+          i < STEP_LABELS.length - 1
+            ? `<div class="step-line${i < screen ? " on" : ""}"></div>`
+            : "";
+        return `<div class="step-dot ${cls}"><span>${i + 1}</span><label>${label}</label></div>${line}`;
+      }).join("");
+    }
+
+    const titles = {
+      0: "Create wallet",
+      1: "Entropy ritual",
+      2: "Entropy ritual",
+      3: "Mix sources",
+      4: "Recovery phrase",
+      5: "Done",
+    };
+
+    async function go(n) {
+      if (n === 3) await buildMix();
+      if (n === 4) await showMnemonic();
+      screen = n;
+      $$(".screen").forEach((s) => s.classList.toggle("active", +s.dataset.screen === n));
+      $("#appTitle").textContent = titles[n] || "Create wallet";
+      renderStepper();
+      if (n === 1) requestAnimationFrame(() => placeDice());
+    }
+
+    async function buildMix() {
+      const os = crypto.getRandomValues(new Uint8Array(32));
+      const dicePayload = JSON.stringify(swipeSamples);
+      const word = $("#word").value;
+      const wordHash = new Uint8Array(await sha256(word));
+      const diceHash = new Uint8Array(await sha256(dicePayload));
+
+      // Domain-separated mix: prefix labels + buffers
+      const parts = [
+        new TextEncoder().encode("xrpl-mobile-wallet/v1/entropy\0"),
+        os,
+        new TextEncoder().encode("\0dice\0"),
+        diceHash,
+        new TextEncoder().encode("\0word\0"),
+        wordHash,
+      ];
+      const totalLen = parts.reduce((a, p) => a + p.length, 0);
+      const cat = new Uint8Array(totalLen);
+      let o = 0;
+      for (const p of parts) {
+        cat.set(p, o);
+        o += p.length;
+      }
+      const out = new Uint8Array(await sha256(cat));
+      lastEntropyHex = toHex(out);
+
+      $("#mixOs").textContent = toHex(os).slice(0, 24) + "…";
+      $("#mixDice").textContent = toHex(diceHash).slice(0, 24) + "…";
+      $("#mixWord").textContent = toHex(wordHash).slice(0, 24) + "…";
+      $("#mixDiceBits").textContent =
+        swipeSamples.length + " roll" + (swipeSamples.length === 1 ? "" : "s");
+      $("#mixOut").textContent = lastEntropyHex;
+    }
+
+    async function showMnemonic() {
+      // Demo BIP39-ish: map 32 bytes → 24 word indices (not full BIP39 checksum — mock only)
+      const bytes = new Uint8Array(
+        lastEntropyHex.match(/.{2}/g).map((h) => parseInt(h, 16))
+      );
+      // Expand to 264 bits with fake checksum nibble for display variety
+      const bits = [];
+      for (const b of bytes) {
+        for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1);
+      }
+      const cs = bytes[0] >> 4; // fake
+      for (let i = 7; i >= 4; i--) bits.push((cs >> (i - 4)) & 1);
+
+      const words = [];
+      for (let i = 0; i < 24; i++) {
+        let idx = 0;
+        for (let j = 0; j < 11; j++) idx = (idx << 1) | bits[i * 11 + j];
+        words.push(WORDLIST[idx % WORDLIST.length]);
+      }
+      lastMnemonic = words;
+      $("#wordGrid").innerHTML = words
+        .map(
+          (w, i) =>
+            `<div class="word-cell"><span class="n">${i + 1}</span><span>${w}</span></div>`
+        )
+        .join("");
+    }
+
+    document.addEventListener("click", (e) => {
+      const goBtn = e.target.closest("[data-go]");
+      if (goBtn && !goBtn.disabled) go(+goBtn.dataset.go);
+    });
+
+    $("#btnBack").addEventListener("click", () => {
+      if (screen > 0) go(screen - 1);
+    });
+
+    $("#btnRestart").addEventListener("click", () => {
+      stopPhysics();
+      settling = false;
+      motionScore = 0;
+      swipeSamples = [];
+      diceFaces = [1, 2, 3, 4, 5];
+      lastEntropyHex = null;
+      $("#word").value = "";
+      $("#hexPreview").textContent = "—";
+      $("#wordMeter").style.width = "0%";
+      $("#wordVal").textContent = "0%";
+      $("#btnToMix").disabled = true;
+      $("#wroteDown").checked = false;
+      $("#btnQuiz").disabled = true;
+      setMotion(0);
+      arena.classList.remove("has-result", "rolling");
+      go(0);
+    });
+
+    // Init
+    setMotion(0);
+    renderStepper();
+    placeDice();
+    window.addEventListener("resize", () => {
+      if (screen === 1 && !dragging && !settling) placeDice();
+    });
+  </script>
+</body>
+</html>

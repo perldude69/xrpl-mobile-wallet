@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XRPL Mobile Wallet — User guide</title>
+  <style>
+    :root {
+      --bg: #0b1216;
+      --bg-elev: #121c22;
+      --panel: #162229;
+      --teal: #00a3bf;
+      --teal-dim: #007a90;
+      --teal-glow: rgba(0, 163, 191, 0.28);
+      --text: #e8f1f4;
+      --muted: #8aa0aa;
+      --warn: #f0b429;
+      --danger: #e85d5d;
+      --ok: #3ecf8e;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 16px;
+      --phone-w: 280px;
+      --max: 52rem;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 163, 191, 0.16), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    a { color: var(--teal); }
+    header.hero {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 1.5rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      letter-spacing: -0.03em;
+    }
+    header.hero p.lede {
+      margin: 0;
+      max-width: 40rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+    .layout {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 0 1.25rem 4rem;
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      gap: 2rem;
+    }
+    nav.toc {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1rem 1.1rem;
+      font-size: 0.9rem;
+    }
+    nav.toc strong { display: block; margin-bottom: 0.6rem; color: var(--teal); }
+    nav.toc ol { margin: 0; padding-left: 1.2rem; color: var(--muted); }
+    nav.toc a { color: var(--text); text-decoration: none; }
+    nav.toc a:hover { color: var(--teal); }
+    main { min-width: 0; }
+    section {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.4rem 1.6rem;
+      margin-bottom: 1.25rem;
+    }
+    section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+    }
+    section h3 {
+      margin: 1.3rem 0 0.45rem;
+      font-size: 1.05rem;
+      color: var(--teal);
+    }
+    p { margin: 0 0 0.8rem; }
+    ol.steps, ul { margin: 0 0 0.9rem; padding-left: 1.25rem; }
+    ol.steps li, ul li { margin: 0.35rem 0; }
+    .callout {
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      margin: 0.9rem 0 1rem;
+      border: 1px solid var(--border);
+    }
+    .callout.safe { background: rgba(232, 93, 93, 0.12); border-color: rgba(232, 93, 93, 0.35); }
+    .callout.tip { background: rgba(0, 163, 191, 0.1); border-color: rgba(0, 163, 191, 0.3); }
+    .callout.warn { background: rgba(240, 180, 41, 0.1); border-color: rgba(240, 180, 41, 0.35); }
+    .callout strong { display: block; margin-bottom: 0.2rem; }
+    kbd, .chip {
+      font-family: ui-monospace, monospace;
+      font-size: 0.85em;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.05rem 0.4rem;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+      margin: 0.6rem 0 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .flow span.arr { color: var(--teal); }
+    figure.shot {
+      margin: 1.1rem 0 0.4rem;
+      display: grid;
+      grid-template-columns: var(--phone-w) 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    .phone {
+      position: relative;
+      width: var(--phone-w);
+      aspect-ratio: 9 / 19.5;
+      background: #071014;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .phone img {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .phone.has-img img { display: block; }
+    .phone .ph {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 1.1rem;
+      background:
+        linear-gradient(180deg, rgba(0, 163, 191, 0.12), transparent 40%),
+        repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(255,255,255,0.02) 8px, rgba(255,255,255,0.02) 16px);
+    }
+    .phone.has-img .ph { display: none; }
+    .ph-id {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      color: var(--teal);
+      font-weight: 700;
+    }
+    .phone .ph strong { margin: 0.35rem 0 0.45rem; font-size: 1.02rem; }
+    .phone .ph code {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted);
+      word-break: break-all;
+      margin-bottom: 0.6rem;
+    }
+    .phone .ph p { font-size: 0.78rem; color: var(--muted); margin: 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 0.12rem 0.5rem;
+      margin-top: 0.55rem;
+      width: fit-content;
+    }
+    .badge.secure { background: rgba(232, 93, 93, 0.2); color: #ffb4b4; }
+    figcaption { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0.5rem 0 1rem; }
+    th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .shot-index td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
+    footer {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 0 1.25rem 3rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; }
+      figure.shot { grid-template-columns: 1fr; }
+      .phone { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>XRPL Mobile Wallet</h1>
+    <p class="lede">A simple guide for first-time users. This app keeps your secrets on the phone. Nobody else can recover a lost PIN or recovery phrase for you — write those down offline before you need them.</p>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <strong>On this page</strong>
+      <ol>
+        <li><a href="#safety">Stay safe</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#pin">Set a PIN</a></li>
+        <li><a href="#unlock">Unlock</a></li>
+        <li><a href="#tabs">Find your way around</a></li>
+        <li><a href="#create">Create a wallet</a></li>
+        <li><a href="#import">Import a wallet</a></li>
+        <li><a href="#list">Your wallet list</a></li>
+        <li><a href="#detail">Open a wallet</a></li>
+        <li><a href="#receive">Receive</a></li>
+        <li><a href="#send">Send</a></li>
+        <li><a href="#watch">Watch-only &amp; add keys</a></li>
+        <li><a href="#ledger">USB Ledger</a></li>
+        <li><a href="#activity">Activity</a></li>
+        <li><a href="#settings">Settings</a></li>
+        <li><a href="#coffee">Buy a coffee</a></li>
+        <li><a href="#backup">Move to a new phone</a></li>
+        <li><a href="#help">If something goes wrong</a></li>
+        <li><a href="#shots">Screenshot list</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="safety">
+        <h2>1. Stay safe</h2>
+        <p>This is a <strong>local</strong> wallet. Keys live in the phone’s Android Keystore. There is no account, no cloud backup, and no company that can reset your access.</p>
+        <div class="callout safe">
+          <strong>Never share these</strong>
+          Your PIN, Game PIN, 24-word recovery phrase, or family seed (a secret starting with <span class="chip">s</span>). Do not type them into a website, chat, or email. The app will never ask you to send them to anyone.
+        </div>
+        <ul>
+          <li>Write the recovery phrase on paper (or metal). Store it offline.</li>
+          <li>Anyone with the phrase can spend the funds — even without this app.</li>
+          <li>Deleting the app or using <strong>Wipe all local data</strong> erases keys from this phone. The ledger still holds the coins; only the phrase (or seed) can bring them back.</li>
+        </ul>
+      </section>
+
+      <section id="install">
+        <h2>2. Install the app</h2>
+         <figure class="shot" data-shot="01-home-icon">
+          <div class="phone">
+            <img src="screenshots/01-home-icon.png" alt="App icon on the Android home screen" />
+            <div class="ph">
+              <span class="ph-id">SHOT 01</span>
+              <strong>Home screen icon</strong>
+              <code>screenshots/01-home-icon.png</code>
+              <p>Android launcher showing XRPL Mobile Wallet. Crop to the icon plus label if the rest of the home screen is busy.</p>
+            </div>
+          </div>
+          <figcaption>Find <strong>XRPL Mobile Wallet</strong> on the home screen or in the app drawer, then open it.</figcaption>
+        </figure>
+      </section>
+
+      <section id="pin">
+        <h2>3. First launch: set a PIN</h2>
+        <p>The first time you open the app you must create a PIN. It unlocks the app on this phone. It is <em>not</em> your recovery phrase.</p>
+        <ol class="steps">
+          <li>On <strong>Set PIN</strong>, type a PIN of at least <strong>6 digits</strong>.</li>
+          <li>Type it again under <strong>Confirm PIN</strong>.</li>
+          <li>Tap the button to save. You will land on the unlock screen (or straight into the app).</li>
+        </ol>
+        <figure class="shot" data-shot="02-set-pin" data-secure="true">
+          <div class="phone">
+            <img src="screenshots/02-set-pin.png" alt="Set PIN screen with PIN and Confirm PIN fields" />
+            <div class="ph">
+              <span class="ph-id">SHOT 02</span>
+              <strong>Set PIN</strong>
+              <code>screenshots/02-set-pin.png</code>
+              <p>First launch. App bar “Set PIN”. Empty PIN + Confirm PIN fields. Do not include a real PIN in the photo.</p>
+              <span class="badge secure">FLAG_SECURE</span>
+            </div>
+          </div>
+          <figcaption>Create a PIN of at least 6 digits, then confirm it. This PIN stays on the device.</figcaption>
+        </figure>
+      </section>
+
+      <section id="unlock">
+        <h2>4. Unlock</h2>
+        <p>Every time you return after the app has been in the background for a while (about 90 seconds), you will see the unlock screen.</p>
+        <ul>
+          <li>Type your <strong>wallet PIN</strong> and continue — that opens the wallets.</li>
+          <li>If you turned on fingerprint / face unlock in Settings, the phone may prompt you automatically.</li>
+          <li>If you set a <strong>Game PIN</strong> (optional), that PIN opens a game called Zerpland instead of the wallet. The wallet stays locked.</li>
+        </ul>
+        <figure class="shot" data-shot="03-unlock" data-secure="true">
+          <div class="phone">
+            <img src="screenshots/03-unlock.png" alt="Unlock screen with PIN field" />
+            <div class="ph">
+              <span class="ph-id">SHOT 03</span>
+              <strong>Unlock</strong>
+              <code>screenshots/03-unlock.png</code>
+              <p>PIN field empty. If a fingerprint button is visible, include it. No digits on screen.</p>
+              <span class="badge secure">FLAG_SECURE</span>
+            </div>
+          </div>
+          <figcaption>Unlock with your wallet PIN (or biometrics, if you enabled them).</figcaption>
+        </figure>
+      </section>
+
+      <section id="tabs">
+        <h2>5. Find your way around</h2>
+        <p>After unlock you get three tabs at the bottom of the screen:</p>
+        <table>
+          <thead><tr><th>Tab</th><th>What it is for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Wallets</strong></td><td>Your accounts, balances, and the portfolio total.</td></tr>
+            <tr><td><strong>Activity</strong></td><td>Recent payments and other ledger events.</td></tr>
+            <tr><td><strong>Settings</strong></td><td>Create / import, network, security, backup, coffee mug.</td></tr>
+          </tbody>
+        </table>
+        <p>The top-right <strong>connection chip</strong> (for example <span class="chip">Mainnet · OK</span>) shows whether the app can reach the XRP Ledger. Tap it for RPC (balances / send) and Watcher (live alerts) details, or to reconnect.</p>
+        <figure class="shot" data-shot="04-tabs-empty">
+          <div class="phone">
+            <img src="screenshots/04-tabs-empty.png" alt="Wallets tab with no wallets yet" />
+            <div class="ph">
+              <span class="ph-id">SHOT 04</span>
+              <strong>Wallets — empty</strong>
+              <code>screenshots/04-tabs-empty.png</code>
+              <p>Wallets tab selected. Empty state “No wallets yet”. Show the three bottom tabs and the connection chip in the app bar.</p>
+            </div>
+          </div>
+          <figcaption>No wallets yet. The hint on this screen points you to <strong>Settings → Create wallet</strong> or <strong>Import wallet</strong>.</figcaption>
+        </figure>
+        <figure class="shot" data-shot="05-connection-sheet">
+          <div class="phone">
+            <img src="screenshots/05-connection-sheet.png" alt="Connection details sheet" />
+            <div class="ph">
+              <span class="ph-id">SHOT 05</span>
+              <strong>Connection sheet</strong>
+              <code>screenshots/05-connection-sheet.png</code>
+              <p>Tap the status chip in the app bar. Capture the bottom sheet with RPC and Watcher rows (host names only).</p>
+            </div>
+          </div>
+          <figcaption>Green / yellow / red on the chip is a traffic light: both pipes healthy, one struggling, or disconnected.</figcaption>
+        </figure>
+      </section>
+
+      <section id="create">
+        <h2>6. Create a new wallet</h2>
+        <div class="flow">Settings <span class="arr">→</span> Create wallet</div>
+        <p>Use this if you do <em>not</em> already have a recovery phrase. The app builds a new 24-word phrase. You help mix in extra randomness with dice swipes and a personal word; the phone’s secure random generator is <strong>always</strong> included, so a weak word does not make a weak wallet.</p>
+        <ol class="steps">
+          <li><strong>Label</strong> — a nickname such as “Main”. This is not secret.</li>
+          <li><strong>Entropy ritual — dice</strong> — swipe on the pad until the meter is full, as if rolling dice.</li>
+          <li><strong>Entropy ritual — word</strong> — type a personal word (optional extra mix-in), then continue.</li>
+          <li><strong>Recovery phrase</strong> — 24 words. Write them down offline, in order. Screenshots are blocked on this step.</li>
+          <li>Check the box that you wrote the phrase down.</li>
+          <li><strong>Confirm backup</strong> — a short quiz so the phrase is really on paper.</li>
+          <li>Tap <strong>Create wallet</strong>. The phrase is stored in the Keystore; you should not need to see it again unless you export it from your paper backup.</li>
+        </ol>
+        <div class="callout safe">
+          <strong>The 24 words are the wallet</strong>
+          Lose the phrase and lose the PIN/device, and the funds are gone. Never photograph the phrase. Never store it in cloud notes.
+        </div>
+        <figure class="shot" data-shot="06-create-label">
+          <div class="phone">
+            <img src="screenshots/06-create-label.png" alt="Create wallet label step" />
+            <div class="ph">
+              <span class="ph-id">SHOT 06</span>
+              <strong>Create — label</strong>
+              <code>screenshots/06-create-label.png</code>
+              <p>Settings → Create wallet. Label field, network line, button “Continue to entropy ritual”.</p>
+            </div>
+          </div>
+          <figcaption>Give the wallet a name. The network (Mainnet or Testnet) is whatever you selected in Settings.</figcaption>
+        </figure>
+        <figure class="shot" data-shot="07-create-dice" data-secure="true">
+          <div class="phone">
+            <img src="screenshots/07-create-dice.png" alt="Dice entropy pad" />
+            <div class="ph">
+              <span class="ph-id">SHOT 07</span>
+              <strong>Create — dice</strong>
+              <code>screenshots/07-create-dice.png</code>
+              <p>Dice pad with the meter partly filled. Title “Entropy ritual”.</p>
+              <span class="badge secure">FLAG_SECURE</span>
+            </div>
+          </div>
+          <figcaption>Swipe until the meter fills. This is extra randomness mixed with the phone’s own generator.</figcaption>
+        </figure>
+        <figure class="shot" data-shot="08-create-phrase" data-secure="true">
+          <div class="phone">
+            <img src="screenshots/08-create-phrase.png" alt="24-word recovery phrase reveal" />
+            <div class="ph">
+              <span class="ph-id">SHOT 08</span>
+              <strong>Create — recovery phrase</strong>
+              <code>screenshots/08-create-phrase.png</code>
+              <p>24-word grid. For the published guide, blur or replace words with “word01 … word24” — never ship a live phrase.</p>
+              <span class="badge secure">FLAG_SECURE · redact words</span>
+            </div>
+          </div>
+          <figcaption>Write all 24 words, in order, on paper. Then confirm the backup quiz.</figcaption>
+        </figure>
+      </section>
+
+      <section id="import">
+        <h2>7. Import an existing wallet</h2>
+        <div class="flow">Settings <span class="arr">→</span> Import wallet</div>
+        <p>Use this if you already have a secret from this app, another XRPL wallet, or a paper backup. Pick one of the three segments at the top:</p>
+        <table>
+          <thead><tr><th>Tab</th><th>What you paste</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Mnemonic</strong></td><td>12 or 24 recovery words.</td></tr>
+            <tr><td><strong>Seed</strong></td><td>A classic family seed starting with <span class="chip">s</span>.</td></tr>
+            <tr><td><strong>Watch</strong></td><td>A public address starting with <span class="chip">r</span>. No secret. You can see balances and receive, but you cannot send until you add keys or a Ledger.</td></tr>
+          </tbody>
+        </table>
+        <ol class="steps">
+          <li>Give it a <strong>Label</strong> (for example “Savings”).</li>
+          <li>Paste the phrase, seed, or address. On Watch, you can tap <strong>Scan address QR</strong>.</li>
+          <li>Check the network line (Mainnet vs Testnet) matches where the funds actually are.</li>
+          <li>Import. The secret (if any) is stored in the Keystore, not in the visible address book.</li>
+        </ol>
+        <figure class="shot" data-shot="09-import" data-secure="true">
+          <div class="phone">
+            <img src="screenshots/09-import.png" alt="Import wallet with Mnemonic, Seed, and Watch tabs" />
+            <div class="ph">
+              <span class="ph-id">SHOT 09</span>
+              <strong>Import wallet</strong>
+              <code>screenshots/09-import.png</code>
+              <p>Three segments visible. Watch tab is friendliest for a public screenshot (address only). Empty secret field.</p>
+              <span class="badge secure">FLAG_SECURE on mnemonic/seed</span>
+            </div>
+          </div>
+          <figcaption>Mnemonic = recovery words. Seed = family seed. Watch = address only.</figcaption>
+        </figure>
+      </section>
+
+      <section id="list">
+        <h2>8. Your wallet list</h2>
+        <p>The <strong>Wallets</strong> tab lists every account. Pull down to refresh balances.</p>
+        <ul>
+          <li>The card at the top is your <strong>portfolio total</strong> (all wallets, in XRP). Tap it to switch the total between XRP and USD.</li>
+          <li>USD is an approximate rate from an on-ledger oracle — not a trading quote.</li>
+          <li>Each row shows the label, a color dot, and the XRP balance. Tap a row to open it.</li>
+        </ul>
+        <figure class="shot" data-shot="10-wallet-list">
+          <div class="phone">
+            <img src="screenshots/10-wallet-list.png" alt="Wallet list with portfolio total" />
+            <div class="ph">
+              <span class="ph-id">SHOT 10</span>
+              <strong>Wallet list</strong>
+              <code>screenshots/10-wallet-list.png</code>
+              <p>At least one signing wallet. Portfolio summary on top. Connection chip visible. Prefer testnet or small amounts.</p>
+            </div>
+          </div>
+          <figcaption>Tap a wallet to send, receive, or change settings for that account.</figcaption>
+        </figure>
+      </section>
+
+      <section id="detail">
+        <h2>9. Open a wallet</h2>
+        <p>The detail screen is the hub for one account.</p>
+        <ul>
+          <li>A chip says <strong>Signing</strong> (keys on the phone), <strong>Watch-only</strong>, or <strong>Ledger</strong>.</li>
+          <li>The classic address (starts with <span class="chip">r</span>) is selectable — long-press / select to copy.</li>
+          <li><strong>Display name</strong> and <strong>Color</strong> are cosmetic.</li>
+          <li>Balances list native XRP and any issued currencies (IOUs) you hold.</li>
+          <li>Buttons: <strong>Send</strong> (if this wallet can sign) and <strong>Receive</strong>.</li>
+          <li>The ⋮ menu can delete the wallet from this phone (the phrase on paper is still the real backup).</li>
+        </ul>
+        <figure class="shot" data-shot="11-wallet-detail">
+          <div class="phone">
+            <img src="screenshots/11-wallet-detail.png" alt="Wallet detail with Send and Receive" />
+            <div class="ph">
+              <span class="ph-id">SHOT 11</span>
+              <strong>Wallet detail</strong>
+              <code>screenshots/11-wallet-detail.png</code>
+              <p>Signing wallet. Show address, chips, balances, Send + Receive. Crop if the list is long; keep the action buttons.</p>
+            </div>
+          </div>
+          <figcaption>Signing wallets can send. Watch-only wallets show Receive and <strong>Add keys</strong> instead.</figcaption>
+        </figure>
+      </section>
+
+      <section id="receive">
+        <h2>10. Receive XRP or tokens</h2>
+        <div class="flow">Wallet <span class="arr">→</span> Receive</div>
+        <ol class="steps">
+          <li>Open the wallet → tap <strong>Receive</strong>.</li>
+          <li>Someone scans the QR code, or you tap <strong>Copy address</strong> and send them the <span class="chip">r…</span> address.</li>
+          <li>They send XRP (or an issued currency you already trust) to that address on the same network (Mainnet vs Testnet).</li>
+        </ol>
+        <div class="callout tip">
+          <strong>Check the first and last characters</strong>
+          When you paste an address anywhere, confirm a few characters at both ends. A typo can send funds to someone else, with no undo.
+        </div>
+        <figure class="shot" data-shot="12-receive">
+          <div class="phone">
+            <img src="screenshots/12-receive.png" alt="Receive screen with QR code and copy button" />
+            <div class="ph">
+              <span class="ph-id">SHOT 12</span>
+              <strong>Receive</strong>
+              <code>screenshots/12-receive.png</code>
+              <p>App bar “Receive · {label}”. QR, full classic address, Copy address button. A testnet address is fine.</p>
+            </div>
+          </div>
+          <figcaption>Share the QR or copy the address. This screen never shows secrets.</figcaption>
+        </figure>
+      </section>
+
+      <section id="send">
+        <h2>11. Send</h2>
+        <div class="flow">Wallet <span class="arr">→</span> Send <span class="arr">→</span> asset <span class="arr">→</span> destination <span class="arr">→</span> amount <span class="arr">→</span> review</div>
+        <p>Send is a short wizard. You can go Back at any step before you confirm.</p>
+        <ol class="steps">
+          <li><strong>Select asset</strong> — XRP or an issued currency you hold.</li>
+          <li><strong>Destination</strong> — paste a classic address. Destination tag is optional (some exchanges require it).</li>
+          <li><strong>Amount</strong> — check the “Available” line so you do not overspend. Keep a little XRP in the account; the ledger needs a reserve.</li>
+          <li><strong>Review</strong> — read destination, asset, and amount. Then <strong>Confirm &amp; send</strong>.</li>
+          <li>The result screen shows success or failure and a transaction hash you can copy.</li>
+        </ol>
+        <div class="callout warn">
+          <strong>Review is the last chance</strong>
+          Payments on the XRP Ledger are not reversible. If the destination is an exchange, include the tag they gave you.
+        </div>
+        <figure class="shot" data-shot="13-send-destination">
+          <div class="phone">
+            <img src="screenshots/13-send-destination.png" alt="Send destination step" />
+            <div class="ph">
+              <span class="ph-id">SHOT 13</span>
+              <strong>Send — destination</strong>
+              <code>screenshots/13-send-destination.png</code>
+              <p>Destination field with a sample r-address (testnet). Optional destination tag empty. Network line visible.</p>
+            </div>
+          </div>
+          <figcaption>Paste the destination address. Add a destination tag only if the recipient asked for one.</figcaption>
+        </figure>
+        <figure class="shot" data-shot="14-send-review">
+          <div class="phone">
+            <img src="screenshots/14-send-review.png" alt="Send review step" />
+            <div class="ph">
+              <span class="ph-id">SHOT 14</span>
+              <strong>Send — review</strong>
+              <code>screenshots/14-send-review.png</code>
+              <p>Review rows: To, amount, network. Button “Confirm &amp; send”. Use a tiny testnet amount.</p>
+            </div>
+          </div>
+          <figcaption>Read the review screen carefully, then confirm. Ledger users will also approve on the device.</figcaption>
+        </figure>
+      </section>
+
+      <section id="watch">
+        <h2>12. Watch-only wallets and adding keys</h2>
+        <p>A <strong>watch-only</strong> wallet is just an address. Useful for tracking a vault or an address whose keys live on a Ledger or another device.</p>
+        <p>To turn it into a signing wallet on this phone (the address must stay the same):</p>
+        <div class="flow">Wallet detail <span class="arr">→</span> Add keys</div>
+        <p>Choose how you will enter the secret:</p>
+        <ul>
+          <li><strong>Paste recovery phrase</strong> — 12 or 24 words as one phrase.</li>
+          <li><strong>Enter phrase (grid)</strong> — 24 numbered boxes with word suggestions.</li>
+          <li><strong>Family seed</strong> — classic seed starting with <span class="chip">s</span>.</li>
+        </ul>
+        <p>If the secret does not produce <em>exactly</em> this address, the app refuses and does not save anything. That protects you from attaching the wrong keys.</p>
+        <figure class="shot" data-shot="15-add-keys">
+          <div class="phone">
+            <img src="screenshots/15-add-keys.png" alt="Add keys chooser" />
+            <div class="ph">
+              <span class="ph-id">SHOT 15</span>
+              <strong>Add keys</strong>
+              <code>screenshots/15-add-keys.png</code>
+              <p>Watch-only wallet → Add keys. Three options visible. Address shown; no secrets.</p>
+            </div>
+          </div>
+          <figcaption>The secret must match this address. A mismatch is rejected.</figcaption>
+        </figure>
+      </section>
+
+      <section id="ledger">
+        <h2>13. USB Ledger</h2>
+        <p>You can send from a watch-only (or any) address using a USB Ledger, without storing the seed on the phone.</p>
+        <ol class="steps">
+          <li>Unlock the Ledger and open the <strong>XRP</strong> app on the device first.</li>
+          <li>On wallet detail, turn on <strong>Ledger Device</strong>.</li>
+          <li>Set <strong>Ledger account index</strong> so the path <span class="chip">m/44'/144'/index'/0/0</span> matches this address.</li>
+          <li>Plug in USB. The first time, Android will ask you to allow the device — tap Allow.</li>
+          <li>Tap <strong>Send (Ledger)</strong> and approve the payment on the Ledger buttons.</li>
+        </ol>
+        <p>If the Ledger derives a different address, the app stops and tells you. Fix the index or uncheck Ledger Device.</p>
+      </section>
+
+      <section id="activity">
+        <h2>14. Activity</h2>
+        <p>The <strong>Activity</strong> tab is a feed of validated ledger events for your addresses. Pull down to refresh. If you have several wallets, chips at the top filter the list.</p>
+        <p>Tap a row for the hash, type, amount, and counterparties. You can copy the hash from the detail screen.</p>
+        <figure class="shot" data-shot="16-activity">
+          <div class="phone">
+            <img src="screenshots/16-activity.png" alt="Activity feed" />
+            <div class="ph">
+              <span class="ph-id">SHOT 16</span>
+              <strong>Activity</strong>
+              <code>screenshots/16-activity.png</code>
+              <p>Activity tab with a few rows (testnet is fine). Filter chips if more than one wallet.</p>
+            </div>
+          </div>
+          <figcaption>Tap any payment for the full detail and hash.</figcaption>
+        </figure>
+      </section>
+
+      <section id="settings">
+        <h2>15. Settings</h2>
+        <p>Open the <strong>Settings</strong> tab. Scroll; the page is a list of sections.</p>
+
+        <h3>Network</h3>
+        <p>Choose <strong>Mainnet</strong> (real XRP) or <strong>Testnet</strong> (practice money). Built-in public servers are listed with checkboxes — keep at least one. You can add a private HTTPS JSON-RPC node and a WSS node (must be <span class="chip">https://</span> and <span class="chip">wss://</span>, not plain http/ws).</p>
+        <figure class="shot" data-shot="17-settings-network">
+          <div class="phone">
+            <img src="screenshots/17-settings-network.png" alt="Settings network section" />
+            <div class="ph">
+              <span class="ph-id">SHOT 17</span>
+              <strong>Settings — Network</strong>
+              <code>screenshots/17-settings-network.png</code>
+              <p>Mainnet selected. Built-in RPC and WSS checkboxes. “Add HTTPS node” / “Add WSS node” visible.</p>
+            </div>
+          </div>
+          <figcaption>Public defaults are xrplcluster and Ankr. Add your own node if you run one; it stays on this device.</figcaption>
+        </figure>
+
+        <h3>Watcher</h3>
+        <p><strong>Background watcher</strong> is an Android notification service that watches public addresses only. It never holds keys. Leave it on if you want a ping when a wallet receives a payment. On some phones, also disable battery optimization for this app so the watcher is not killed after you swipe the app away.</p>
+
+        <h3>Wallets (from Settings)</h3>
+        <p><strong>Create wallet</strong> and <strong>Import wallet</strong> live here — not on the Wallets tab. That is easy to miss the first time.</p>
+
+        <h3>Export list / Import list</h3>
+        <p>These back up <em>names and addresses only</em> (password-encrypted JSON). They do <strong>not</strong> contain seeds. Import list adds missing addresses as watch-only. To move signing keys, you still need the recovery phrase or family seed.</p>
+
+        <h3>Security</h3>
+        <ul>
+          <li><strong>Change PIN</strong> — requires the current PIN.</li>
+          <li><strong>Game PIN</strong> — optional second PIN that opens Zerpland instead of the wallet.</li>
+          <li><strong>Unlock with biometrics</strong> — fingerprint / face after a PIN exists.</li>
+        </ul>
+        <figure class="shot" data-shot="18-settings-security">
+          <div class="phone">
+            <img src="screenshots/18-settings-security.png" alt="Settings security section" />
+            <div class="ph">
+              <span class="ph-id">SHOT 18</span>
+              <strong>Settings — Security</strong>
+              <code>screenshots/18-settings-security.png</code>
+              <p>Scroll Settings to Change PIN, Game PIN, biometrics. No PIN digits on screen.</p>
+            </div>
+          </div>
+          <figcaption>Game PIN is optional. The wallet PIN still unlocks the real wallets.</figcaption>
+        </figure>
+
+        <h3>Danger zone</h3>
+        <p><strong>Wipe all local data</strong> deletes wallets, secrets, cache, and the PIN from this device. You will set up a new PIN afterward. Only do this if you have the recovery phrases.</p>
+      </section>
+
+      <section id="coffee">
+        <h2>16. Buy the developer a coffee</h2>
+        <p>On the Settings tab, tap the small <strong>coffee mug</strong> in the app bar (or the mug on the About row). That opens Send, already aimed at the developer’s XRP address, on the amount step.</p>
+        <ol class="steps">
+          <li>If you have more than one signing wallet, pick which one to send from.</li>
+          <li>Enter an XRP amount.</li>
+          <li>Review and confirm, same as any other payment.</li>
+        </ol>
+        <p>You need a signing (or Ledger) wallet. This is optional and on-ledger — not a website checkout.</p>
+        <figure class="shot" data-shot="19-coffee">
+          <div class="phone">
+            <img src="screenshots/19-coffee.png" alt="Buy a coffee amount screen" />
+            <div class="ph">
+              <span class="ph-id">SHOT 19</span>
+              <strong>Buy a coffee</strong>
+              <code>screenshots/19-coffee.png</code>
+              <p>Settings app bar mug visible, or the “Buy a coffee” send screen with destination locked and amount empty.</p>
+            </div>
+          </div>
+          <figcaption>The mug is the tip jar. Destination is fixed; you only choose the amount.</figcaption>
+        </figure>
+      </section>
+
+      <section id="backup">
+        <h2>17. Move to a new phone</h2>
+        <ol class="steps">
+          <li>On the old phone, confirm you still have each recovery phrase (or family seed) on paper.</li>
+          <li>Optional: Settings → <strong>Export list</strong> so you do not retype labels and watch-only addresses. Pick a password you will remember.</li>
+          <li>Install XRPL Mobile Wallet on the new phone and set a PIN.</li>
+          <li>Settings → <strong>Import list</strong> (watch-only names/addresses), then <strong>Import wallet</strong> or <strong>Add keys</strong> for each signing account using the paper backup.</li>
+          <li>Check balances, then wipe or uninstall the old phone if you are done with it.</li>
+        </ol>
+        <div class="callout safe">
+          <strong>Export list is not a key backup</strong>
+          Encrypted JSON has names and addresses only. Without the 24 words (or family seed), you cannot spend.
+        </div>
+      </section>
+
+      <section id="help">
+        <h2>18. If something goes wrong</h2>
+        <table>
+          <thead><tr><th>What you see</th><th>What to try</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Balances stuck on “—”</td>
+              <td>Tap the connection chip → Reconnect. Pull down on Wallets to refresh. Check Mainnet vs Testnet.</td>
+            </tr>
+            <tr>
+              <td>Watcher stops after you swipe the app away</td>
+              <td>Settings → leave Background watcher on. In Android settings, disable battery optimization for this app.</td>
+            </tr>
+            <tr>
+              <td>Imported phrase makes a different address than desktop</td>
+              <td>This app uses BIP44 <span class="chip">m/44'/144'/0'/0/0</span> with secp256k1 (same as xrpl.js <span class="chip">Wallet.fromMnemonic</span>). A family seed is a different path — use the Seed tab for <span class="chip">s…</span> secrets.</td>
+            </tr>
+            <tr>
+              <td>Ledger address mismatch</td>
+              <td>Open the XRP app on the device, then set the account index so the path matches the r-address on screen.</td>
+            </tr>
+            <tr>
+              <td>Forgot wallet PIN</td>
+              <td>The PIN cannot be recovered. If you have the recovery phrase, you can wipe the app and import again. If you do not have the phrase, the funds on this device stay locked.</td>
+            </tr>
+            <tr>
+              <td>Forgot Game PIN</td>
+              <td>The wallet PIN still unlocks the real app. You can clear the Game PIN in Settings (wallet PIN required).</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="shots">
+        <h2>Screenshot list</h2>
+        <p>Place PNG files in <span class="chip">docs/user-guide/screenshots/</span> using these names. The cards above fill in automatically. Prefer portrait, dark theme, no notification shade. Redact any live secret.</p>
+        <table class="shot-index">
+          <thead>
+            <tr><th>File</th><th>Screen</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>01-home-icon.png</td><td>Launcher</td><td>App icon + name</td></tr>
+            <tr><td>02-set-pin.png</td><td>Set PIN</td><td>FLAG_SECURE · no digits</td></tr>
+            <tr><td>03-unlock.png</td><td>Unlock</td><td>FLAG_SECURE · no digits</td></tr>
+            <tr><td>04-tabs-empty.png</td><td>Wallets empty</td><td>Show bottom tabs + chip</td></tr>
+            <tr><td>05-connection-sheet.png</td><td>Connection sheet</td><td>Host names only</td></tr>
+            <tr><td>06-create-label.png</td><td>Create · label</td><td></td></tr>
+            <tr><td>07-create-dice.png</td><td>Create · dice</td><td>FLAG_SECURE</td></tr>
+            <tr><td>08-create-phrase.png</td><td>Create · phrase</td><td>FLAG_SECURE · redact words</td></tr>
+            <tr><td>09-import.png</td><td>Import</td><td>Watch tab safest</td></tr>
+            <tr><td>10-wallet-list.png</td><td>Wallet list</td><td></td></tr>
+            <tr><td>11-wallet-detail.png</td><td>Wallet detail</td><td>Send + Receive</td></tr>
+            <tr><td>12-receive.png</td><td>Receive QR</td><td></td></tr>
+            <tr><td>13-send-destination.png</td><td>Send · destination</td><td>Testnet OK</td></tr>
+            <tr><td>14-send-review.png</td><td>Send · review</td><td>Tiny amount</td></tr>
+            <tr><td>15-add-keys.png</td><td>Add keys chooser</td><td>No secrets</td></tr>
+            <tr><td>16-activity.png</td><td>Activity</td><td></td></tr>
+            <tr><td>17-settings-network.png</td><td>Settings · Network</td><td></td></tr>
+            <tr><td>18-settings-security.png</td><td>Settings · Security</td><td></td></tr>
+            <tr><td>19-coffee.png</td><td>Coffee mug / send</td><td>Mug in app bar or amount step</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    XRPL Mobile Wallet · local-first Android app for the XRP Ledger ·
+    This page is the user-facing guide. Developer notes live in README.md and AGENTS.md.
+  </footer>
+
+  <script>
+    document.querySelectorAll(".shot").forEach((fig) => {
+      const img = fig.querySelector("img");
+      const phone = fig.querySelector(".phone");
+      if (!img || !phone) return;
+      const mark = () => phone.classList.add("has-img");
+      img.addEventListener("load", () => {
+        if (img.naturalWidth > 0) mark();
+      });
+      img.addEventListener("error", () => phone.classList.remove("has-img"));
+      if (img.complete && img.naturalWidth > 0) mark();
+    });
+  </script>
+</body>
+</html>

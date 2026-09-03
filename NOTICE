@@ -1,0 +1,21 @@
+XRPL Mobile Wallet
+Copyright (c) 2026 Jim
+
+This product includes software and data from third parties:
+
+------------------------------------------------------------------------
+ledger_usb_plus (vendored at packages/ledger_usb_plus)
+------------------------------------------------------------------------
+The MIT License (MIT)
+Copyright (c) VESPR Wallet <contact@vespr.xyz>
+
+The local copy is a path dependency. Do not edit the pub-cache copy.
+See packages/ledger_usb_plus/LICENSE for the full license text.
+
+------------------------------------------------------------------------
+XRPSCAN token catalog snapshot
+------------------------------------------------------------------------
+Display names in assets/tokens/xrpscan_tokens.json are derived from a
+community snapshot of https://xrpscan.com/tokens. This is not an official
+Ripple product. Metadata © community data from xrpscan.com/tokens.
+Regenerate with: python3 tool/fetch_xrpscan_tokens.py

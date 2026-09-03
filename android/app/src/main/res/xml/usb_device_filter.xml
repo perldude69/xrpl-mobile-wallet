@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Ledger vendor 0x2c97 (11415). Product IDs encode model (high byte) +
+      interface bits (low byte): HID 0x01, keyboard 0x02, U2F 0x04, CCID 0x08, WebUSB 0x10.
+      List common combos so Android offers USB permission on attach.
+    -->
+    <!-- Blue -->
+    <usb-device vendor-id="11415" product-id="1" />
+    <usb-device vendor-id="11415" product-id="16" />
+    <!-- Nano S (0x10xx) -->
+    <usb-device vendor-id="11415" product-id="4097" />
+    <usb-device vendor-id="11415" product-id="4113" />
+    <usb-device vendor-id="11415" product-id="4117" />
+    <!-- Nano X (0x40xx) -->
+    <usb-device vendor-id="11415" product-id="16385" />
+    <usb-device vendor-id="11415" product-id="16401" />
+    <usb-device vendor-id="11415" product-id="16417" />
+    <!-- Nano S Plus (0x50xx) -->
+    <usb-device vendor-id="11415" product-id="20481" />
+    <usb-device vendor-id="11415" product-id="20497" />
+    <!-- Stax (0x60xx) -->
+    <usb-device vendor-id="11415" product-id="24577" />
+    <usb-device vendor-id="11415" product-id="24593" />
+    <!-- Flex (0x70xx) -->
+    <usb-device vendor-id="11415" product-id="28673" />
+    <usb-device vendor-id="11415" product-id="28689" />
+    <!-- Legacy / alternate IDs seen in the wild -->
+    <usb-device vendor-id="11415" product-id="64" />
+    <usb-device vendor-id="11415" product-id="16" />
+</resources>

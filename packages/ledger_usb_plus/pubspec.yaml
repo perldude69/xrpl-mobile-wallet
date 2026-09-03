@@ -1,0 +1,29 @@
+name: ledger_usb_plus
+description: A Flutter plugin to operate a Ledger Nano device over USB
+version: 1.0.8
+homepage: https://github.com/vespr-wallet/ledger-usb-plus
+repository: https://github.com/vespr-wallet/ledger-usb-plus
+issue_tracker: https://github.com/vespr-wallet/ledger-usb-plus/issues
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.1.8
+  # collection: ^1.19.0
+
+dev_dependencies:
+  # flutter_test:
+  #   sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.blockshake.ledger
+        pluginClass: LedgerUsbPlugin
+
