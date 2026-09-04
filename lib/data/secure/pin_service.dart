@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:crypto/crypto.dart';
+import 'package:crypto/crypto.dart' as crypto;
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
+import 'package:xrpl_mobile_wallet/data/secure/secure_storage.dart';
 
 /// Result of checking an unlock PIN against wallet and optional game PIN.
 enum PinCheckResult {
@@ -20,7 +22,7 @@ enum PinCheckResult {
 
 class PinService {
   PinService({FlutterSecureStorage? storage})
-      : _kv = _FlutterSecureKv(storage ?? const FlutterSecureStorage());
+      : _kv = _FlutterSecureKv(storage ?? kAppSecureStorage);
 
   /// In-memory store for unit tests (no platform channels).
   PinService.memory([Map<String, String>? map]) : _kv = _MapKv(map ?? {});
@@ -30,15 +32,50 @@ class PinService {
   static bool isPinFormatValid(String pin) =>
       pin.length >= AppConfig.pinMinLength && RegExp(r'^\d+$').hasMatch(pin);
 
-  static String hashPin(String pin, String salt) {
-    final bytes = utf8.encode('$salt:$pin');
-    return sha256.convert(bytes).toString();
+  /// PBKDF2-SHA256 PIN verifier (same KDF family as [WalletExport]).
+  static Future<String> hashPin(
+    String pin,
+    String salt, {
+    int iterations = AppConfig.pinPbkdf2Iterations,
+  }) async {
+    final saltBytes = base64Url.decode(salt);
+    final pbkdf2 = Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations: iterations,
+      bits: 256,
+    );
+    final key = await pbkdf2.deriveKey(
+      secretKey: SecretKey(utf8.encode(pin)),
+      nonce: saltBytes,
+    );
+    final bytes = await key.extractBytes();
+    return base64UrlEncode(bytes);
   }
+
+  /// Pre-PBKDF2 verifier: `sha256('$salt:$pin')` hex. Kept to migrate
+  /// existing installs on the next successful unlock.
+  static String hashPinLegacy(String pin, String salt) {
+    final bytes = utf8.encode('$salt:$pin');
+    return crypto.sha256.convert(bytes).toString();
+  }
+
+  static bool isLegacyPinHash(String hash) =>
+      RegExp(r'^[0-9a-f]{64}$').hasMatch(hash);
 
   static String generateSalt() {
     final r = Random.secure();
     final bytes = List<int>.generate(16, (_) => r.nextInt(256));
     return base64UrlEncode(bytes);
+  }
+
+  /// Constant-time equality for equal-length strings; length mismatch is false.
+  static bool hashEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return diff == 0;
   }
 
   Future<bool> hasPin() async {
@@ -59,17 +96,19 @@ class PinService {
     if (await verifyGamePin(pin)) {
       throw ArgumentError('Wallet PIN must differ from the game PIN');
     }
-    final salt = generateSalt();
-    final hash = hashPin(pin, salt);
-    await _kv.write(StorageKeys.pinSalt, salt);
-    await _kv.write(StorageKeys.pinHash, hash);
+    await _writeVerifier(
+      pin: pin,
+      saltKey: StorageKeys.pinSalt,
+      hashKey: StorageKeys.pinHash,
+    );
   }
 
   Future<bool> verifyPin(String pin) async {
-    final salt = await _kv.read(StorageKeys.pinSalt);
-    final expected = await _kv.read(StorageKeys.pinHash);
-    if (salt == null || expected == null) return false;
-    return hashPin(pin, salt) == expected;
+    return _verifyAndMaybeUpgrade(
+      pin: pin,
+      saltKey: StorageKeys.pinSalt,
+      hashKey: StorageKeys.pinHash,
+    );
   }
 
   /// Verify [currentPin], then replace with [newPin]. Returns false if current
@@ -103,18 +142,20 @@ class PinService {
     if (gamePin == walletPin || await verifyPin(gamePin)) {
       throw ArgumentError('Game PIN must differ from the wallet PIN');
     }
-    final salt = generateSalt();
-    final hash = hashPin(gamePin, salt);
-    await _kv.write(StorageKeys.gamePinSalt, salt);
-    await _kv.write(StorageKeys.gamePinHash, hash);
+    await _writeVerifier(
+      pin: gamePin,
+      saltKey: StorageKeys.gamePinSalt,
+      hashKey: StorageKeys.gamePinHash,
+    );
     return true;
   }
 
   Future<bool> verifyGamePin(String pin) async {
-    final salt = await _kv.read(StorageKeys.gamePinSalt);
-    final expected = await _kv.read(StorageKeys.gamePinHash);
-    if (salt == null || expected == null) return false;
-    return hashPin(pin, salt) == expected;
+    return _verifyAndMaybeUpgrade(
+      pin: pin,
+      saltKey: StorageKeys.gamePinSalt,
+      hashKey: StorageKeys.gamePinHash,
+    );
   }
 
   /// Change game PIN after verifying wallet PIN. Returns false if wallet PIN
@@ -135,12 +176,50 @@ class PinService {
     return true;
   }
 
+  /// Delete wallet and game PIN verifiers (full wipe). Does not require the PIN.
+  Future<void> wipePins() async {
+    await _kv.delete(StorageKeys.pinHash);
+    await _kv.delete(StorageKeys.pinSalt);
+    await _kv.delete(StorageKeys.gamePinHash);
+    await _kv.delete(StorageKeys.gamePinSalt);
+  }
+
   /// Classify an unlock attempt. Wallet PIN takes precedence if both matched
   /// (they must not be equal when set).
   Future<PinCheckResult> checkUnlockPin(String pin) async {
     if (await verifyPin(pin)) return PinCheckResult.wallet;
     if (await verifyGamePin(pin)) return PinCheckResult.game;
     return PinCheckResult.failed;
+  }
+
+  Future<void> _writeVerifier({
+    required String pin,
+    required String saltKey,
+    required String hashKey,
+  }) async {
+    final salt = generateSalt();
+    final hash = await hashPin(pin, salt);
+    await _kv.write(saltKey, salt);
+    await _kv.write(hashKey, hash);
+  }
+
+  Future<bool> _verifyAndMaybeUpgrade({
+    required String pin,
+    required String saltKey,
+    required String hashKey,
+  }) async {
+    final salt = await _kv.read(saltKey);
+    final expected = await _kv.read(hashKey);
+    if (salt == null || expected == null) return false;
+
+    if (isLegacyPinHash(expected)) {
+      if (!hashEquals(hashPinLegacy(pin, salt), expected)) return false;
+      await _writeVerifier(pin: pin, saltKey: saltKey, hashKey: hashKey);
+      return true;
+    }
+
+    final computed = await hashPin(pin, salt);
+    return hashEquals(computed, expected);
   }
 }
 

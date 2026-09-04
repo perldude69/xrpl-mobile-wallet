@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:xrpl_dart/xrpl_dart.dart';
 import 'package:xrpl_mobile_wallet/config/network_id.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
+import 'package:xrpl_mobile_wallet/data/payments/payment_service.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rpc_http_client.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
 
@@ -161,6 +162,33 @@ class XrplRpcClient {
       throw StateError('XrplRpcClient is not connected. Call connect() first.');
     }
     return rpc;
+  }
+
+  /// Minimum open-ledger fee in drops (same [XrplFeeType.minimum] autoFill uses).
+  Future<BigInt> fetchMinimumFeeDrops() async {
+    final rpc = _requireRpc();
+    final result = await rpc.request(XRPRequestFee());
+    return result.getFeeType(type: XrplFeeType.minimum);
+  }
+
+  /// Destination flags that affect send safety. Unfunded accounts are allowed.
+  Future<DestinationAccountPolicy> fetchDestinationPolicy(String address) async {
+    final rpc = _requireRpc();
+    try {
+      final info = await rpc.request(XRPRequestAccountInfo(account: address));
+      final decoded = info.accountFlags;
+      if (decoded != null) {
+        return DestinationAccountPolicy(
+          exists: true,
+          requireDestinationTag: decoded.requireDestinationTag,
+          disallowIncomingXrp: decoded.disallowIncomingXRP,
+        );
+      }
+      return DestinationAccountPolicy.fromFlags(info.accountData.flags);
+    } on RPCError catch (e) {
+      if (_isAccountNotFound(e)) return DestinationAccountPolicy.unfunded;
+      rethrow;
+    }
   }
 
   /// Fetch XRP + IOU balances for [address].

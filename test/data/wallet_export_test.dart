@@ -71,4 +71,23 @@ void main() {
       throwsA(isA<ArgumentError>()),
     );
   });
+
+  test('decrypt rejects attacker-controlled iteration counts', () async {
+    final doc = await WalletExport.encryptExport(
+      wallets: [wallet('A', 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh')],
+      password: 'correct1',
+    );
+
+    Future<void> expectRejected(int iter) async {
+      final hostile = Map<String, dynamic>.from(doc);
+      hostile['iter'] = iter;
+      await expectLater(
+        WalletExport.decryptExport(document: hostile, password: 'correct1'),
+        throwsA(isA<ArgumentError>()),
+      );
+    }
+
+    await expectRejected(1);
+    await expectRejected(WalletExport.maxPbkdf2Iterations + 1);
+  });
 }

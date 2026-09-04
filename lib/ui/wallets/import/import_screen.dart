@@ -222,6 +222,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             maxLines: _tab == _ImportTab.mnemonic ? 4 : 1,
             enableSuggestions: !_isSecretField,
             autocorrect: false,
+            enableIMEPersonalizedLearning: false,
+            autofillHints: const <String>[],
             keyboardType: _tab == _ImportTab.mnemonic
                 ? TextInputType.visiblePassword
                 : TextInputType.text,

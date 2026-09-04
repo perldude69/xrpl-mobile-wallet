@@ -27,6 +27,23 @@ void main() {
     expect(state.hasPartialBalances, isTrue);
   });
 
+  test('ensureUniqueAddress rejects a duplicate classic address', () {
+    expect(
+      () => WalletListController.ensureUniqueAddress(
+        [wallet('a')],
+        'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => WalletListController.ensureUniqueAddress(
+        [wallet('a')],
+        'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe',
+      ),
+      returnsNormally,
+    );
+  });
+
   test('totalXrp is 0 with empty wallets', () {
     const state = WalletListState();
     expect(state.totalXrp, '0');

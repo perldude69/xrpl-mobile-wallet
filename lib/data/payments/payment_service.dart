@@ -1,9 +1,52 @@
 import 'package:blockchain_utils/blockchain_utils.dart';
 import 'package:xrpl_dart/xrpl_dart.dart';
+import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/network_id.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/rlusd.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/secret_validator.dart';
+
+/// Destination account flags that affect whether a payment is safe to send.
+class DestinationAccountPolicy {
+  const DestinationAccountPolicy({
+    required this.exists,
+    required this.requireDestinationTag,
+    required this.disallowIncomingXrp,
+  });
+
+  /// False when the classic address has never been funded (`actNotFound`).
+  final bool exists;
+  final bool requireDestinationTag;
+  final bool disallowIncomingXrp;
+
+  static const unfunded = DestinationAccountPolicy(
+    exists: false,
+    requireDestinationTag: false,
+    disallowIncomingXrp: false,
+  );
+
+  static const int lsfRequireDestTag = 0x00020000;
+  static const int lsfDisallowXrp = 0x00080000;
+
+  factory DestinationAccountPolicy.fromFlags(int flags) {
+    return DestinationAccountPolicy(
+      exists: true,
+      requireDestinationTag: (flags & lsfRequireDestTag) != 0,
+      disallowIncomingXrp: (flags & lsfDisallowXrp) != 0,
+    );
+  }
+
+  /// Error to show before signing, or null if the payment may proceed.
+  String? sendError({required bool isXrp, required int? destinationTag}) {
+    if (exists && requireDestinationTag && destinationTag == null) {
+      return 'This destination requires a destination tag';
+    }
+    if (exists && isXrp && disallowIncomingXrp) {
+      return 'This destination does not accept XRP';
+    }
+    return null;
+  }
+}
 
 /// Result of submitting a Payment transaction.
 class PaymentSubmitResult {
@@ -79,6 +122,86 @@ class PaymentValidators {
     final ra = BigRational.parseDecimal(a.trim());
     final rb = BigRational.parseDecimal(b.trim());
     return ra.compareTo(rb);
+  }
+
+  /// Returns an error if [feeDrops] is missing, invalid, or above [maxDrops].
+  static String? validateFeeDrops(
+    String? feeDrops, {
+    BigInt? maxDrops,
+  }) {
+    final max = maxDrops ?? BigInt.from(AppConfig.maxFeeDrops);
+    if (feeDrops == null || feeDrops.trim().isEmpty) {
+      return 'Network fee is missing; refusing to sign';
+    }
+    final BigInt fee;
+    try {
+      fee = BigInt.parse(feeDrops.trim());
+    } catch (_) {
+      return 'Network fee is invalid; refusing to sign';
+    }
+    if (fee <= BigInt.zero) {
+      return 'Network fee is invalid; refusing to sign';
+    }
+    if (fee > max) {
+      return 'Network fee is ${XrpAmount.dropsToXrp(fee.toString())} XRP '
+          '(max ${XrpAmount.dropsToXrp(max.toString())} XRP). Refusing to sign.';
+    }
+    return null;
+  }
+
+  /// Sign-time fee must match the value shown on Review (and still pass the cap).
+  static String? reviewedFeeMatches({
+    required String? reviewedDrops,
+    required String? actualDrops,
+  }) {
+    final cap = validateFeeDrops(actualDrops);
+    if (cap != null) return cap;
+    if (reviewedDrops == null || reviewedDrops.trim().isEmpty) {
+      return 'Review fee is missing; go back to Review';
+    }
+    final reviewed = BigInt.parse(reviewedDrops.trim());
+    final actual = BigInt.parse(actualDrops!.trim());
+    if (actual != reviewed) {
+      return 'Network fee changed to ${XrpAmount.dropsToXrp(actual.toString())} XRP '
+          '(reviewed ${XrpAmount.dropsToXrp(reviewed.toString())} XRP). '
+          'Go back to Review to confirm the new fee.';
+    }
+    return null;
+  }
+
+  /// Amount + fee must fit in [availableXrp]. Unfunded destinations need
+  /// at least [accountReserveDrops] (account-create reserve).
+  static String? validateXrpSpendable({
+    required String amountXrp,
+    required String availableXrp,
+    required String feeDrops,
+    required bool destUnfunded,
+    BigInt? accountReserveDrops,
+  }) {
+    final amountErr = validateXrpAmount(amountXrp);
+    if (amountErr != null) return amountErr;
+    final feeErr = validateFeeDrops(feeDrops);
+    if (feeErr != null) return feeErr;
+    final send = BigInt.parse(XrpAmount.xrpToDrops(amountXrp.trim()));
+    final BigInt bal;
+    try {
+      bal = BigInt.parse(XrpAmount.xrpToDrops(availableXrp.trim()));
+    } catch (_) {
+      return 'Available balance is invalid';
+    }
+    final fee = BigInt.parse(feeDrops.trim());
+    if (send + fee > bal) {
+      return 'Amount plus network fee exceeds available balance';
+    }
+    if (destUnfunded) {
+      final reserve =
+          accountReserveDrops ?? BigInt.from(AppConfig.accountCreateReserveDrops);
+      if (send < reserve) {
+        return 'Unfunded destination needs at least '
+            '${XrpAmount.dropsToXrp(reserve.toString())} XRP';
+      }
+    }
+    return null;
   }
 }
 
@@ -177,6 +300,7 @@ class PaymentService {
     int? destinationTag,
     required String amountXrp,
     required XRPProvider rpc,
+    String? expectedFeeDrops,
   }) async {
     final amountError = PaymentValidators.validateXrpAmount(amountXrp);
     if (amountError != null) {
@@ -190,6 +314,7 @@ class PaymentService {
       secret: secret,
       fromAddress: fromAddress,
       rpc: rpc,
+      expectedFeeDrops: expectedFeeDrops,
       build: (pubHex) => Payment(
         amount: amount,
         destination: destination.trim(),
@@ -210,6 +335,7 @@ class PaymentService {
     required String issuer,
     required String value,
     required XRPProvider rpc,
+    String? expectedFeeDrops,
   }) async {
     final amountError = PaymentValidators.validateIouAmount(value);
     if (amountError != null) {
@@ -232,6 +358,7 @@ class PaymentService {
       secret: secret,
       fromAddress: fromAddress,
       rpc: rpc,
+      expectedFeeDrops: expectedFeeDrops,
       build: (pubHex) => Payment(
         amount: amount,
         destination: destination.trim(),
@@ -306,6 +433,7 @@ class PaymentService {
     required XRPProvider rpc,
     required String publicKeyHex,
     required Future<String> Function(List<int> txBlob) signTransactionBlob,
+    String? expectedFeeDrops,
   }) async {
     final amountError = PaymentValidators.validateXrpAmount(amountXrp);
     if (amountError != null) throw ArgumentError(amountError);
@@ -315,6 +443,7 @@ class PaymentService {
       rpc: rpc,
       publicKeyHex: publicKeyHex,
       signTransactionBlob: signTransactionBlob,
+      expectedFeeDrops: expectedFeeDrops,
       build: (pubHex) => Payment(
         amount: XRPAmount(drops),
         destination: destination.trim(),
@@ -335,6 +464,7 @@ class PaymentService {
     required XRPProvider rpc,
     required String publicKeyHex,
     required Future<String> Function(List<int> txBlob) signTransactionBlob,
+    String? expectedFeeDrops,
   }) async {
     final amountError = PaymentValidators.validateIouAmount(value);
     if (amountError != null) throw ArgumentError(amountError);
@@ -343,6 +473,7 @@ class PaymentService {
       rpc: rpc,
       publicKeyHex: publicKeyHex,
       signTransactionBlob: signTransactionBlob,
+      expectedFeeDrops: expectedFeeDrops,
       build: (pubHex) => Payment(
         amount: IssuedCurrencyAmount(
           value: value.trim(),
@@ -374,6 +505,7 @@ class PaymentService {
     required String publicKeyHex,
     required Future<String> Function(List<int> txBlob) signTransactionBlob,
     required SubmittableTransaction Function(String pubHex) build,
+    String? expectedFeeDrops,
   }) async {
     final pub = XRPPublicKey.fromHex(publicKeyHex);
     final derived = pub.toClassicAddress().address;
@@ -388,6 +520,13 @@ class PaymentService {
 
     await XRPHelper.autoFill(rpc, transaction);
     final feeDrops = transaction.fee?.toString();
+    final feeError = expectedFeeDrops == null
+        ? PaymentValidators.validateFeeDrops(feeDrops)
+        : PaymentValidators.reviewedFeeMatches(
+            reviewedDrops: expectedFeeDrops,
+            actualDrops: feeDrops,
+          );
+    if (feeError != null) throw ArgumentError(feeError);
 
     // Ledger XRP app expects the serialized transaction STObject, not the
     // STX\0-prefixed software signing digest.
@@ -414,6 +553,7 @@ class PaymentService {
     required String fromAddress,
     required XRPProvider rpc,
     required SubmittableTransaction Function(String pubHex) build,
+    String? expectedFeeDrops,
   }) async {
     // Local-only key material; not stored or logged.
     final privateKey = privateKeyFromSecret(
@@ -427,6 +567,13 @@ class PaymentService {
 
     await XRPHelper.autoFill(rpc, transaction);
     final feeDrops = transaction.fee?.toString();
+    final feeError = expectedFeeDrops == null
+        ? PaymentValidators.validateFeeDrops(feeDrops)
+        : PaymentValidators.reviewedFeeMatches(
+            reviewedDrops: expectedFeeDrops,
+            actualDrops: feeDrops,
+          );
+    if (feeError != null) throw ArgumentError(feeError);
 
     final blob = transaction.toSigningBlobBytes(signerAddress);
     final sig = privateKey.sign(blob);

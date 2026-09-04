@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/pin_text_field.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/runner/zerpland_runner_screen.dart';
 
 class UnlockScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   void initState() {
     super.initState();
+    ScreenSecurity.enable();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBiometricsFlag();
       _loadGamePinFlag();
@@ -55,6 +57,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
   @override
   void dispose() {
+    ScreenSecurity.disable();
     _pinController.clear();
     _pinController.dispose();
     super.dispose();
@@ -174,16 +177,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 24),
-              TextField(
+              PinTextField(
                 controller: _pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 12,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                label: 'PIN',
                 enabled: !_busy,
                 onSubmitted: (_) => _unlockWithPin(),
               ),

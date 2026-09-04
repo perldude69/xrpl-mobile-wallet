@@ -1,8 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:xrpl_mobile_wallet/data/secure/secure_storage.dart';
 
 class KeyVault {
   KeyVault({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ?? kAppSecureStorage;
 
   final FlutterSecureStorage _storage;
 

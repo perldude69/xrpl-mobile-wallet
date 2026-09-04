@@ -10,11 +10,25 @@ class ScreenSecurity {
 
   static const _channel = MethodChannel('xrpl_mobile_wallet/screen_security');
 
-  /// Enable secure surface (no screenshots / recents capture) when supported.
-  static Future<void> enable() => _setSecure(true);
+  /// Nested enable/disable (PIN dialog over Send, etc.) must not clear the
+  /// flag while an outer secret surface is still open.
+  static int _holds = 0;
 
-  /// Restore normal capture behavior.
-  static Future<void> disable() => _setSecure(false);
+  /// Enable secure surface (no screenshots / recents capture) when supported.
+  static Future<void> enable() async {
+    _holds++;
+    if (_holds == 1) await _setSecure(true);
+  }
+
+  /// Restore normal capture behavior when the last secure surface closes.
+  static Future<void> disable() async {
+    if (_holds <= 0) {
+      _holds = 0;
+      return;
+    }
+    _holds--;
+    if (_holds == 0) await _setSecure(false);
+  }
 
   static Future<void> _setSecure(bool secure) async {
     if (kIsWeb) return;

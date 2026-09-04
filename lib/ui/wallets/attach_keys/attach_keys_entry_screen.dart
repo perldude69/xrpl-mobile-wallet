@@ -234,6 +234,8 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
       maxLines: 6,
       autocorrect: false,
       enableSuggestions: false,
+      enableIMEPersonalizedLearning: false,
+      autofillHints: const <String>[],
       keyboardType: TextInputType.visiblePassword,
       decoration: const InputDecoration(
         labelText: 'Recovery phrase',
@@ -251,6 +253,8 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
       obscureText: _obscureSeed,
       autocorrect: false,
       enableSuggestions: false,
+      enableIMEPersonalizedLearning: false,
+      autofillHints: const <String>[],
       decoration: InputDecoration(
         labelText: 'Family seed',
         hintText: 's…',

@@ -49,6 +49,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
     if (password == null || !mounted) return;
 
     setState(() => _busy = true);
+    File? tmp;
     try {
       final doc = await WalletExport.encryptExport(
         wallets: wallets,
@@ -56,9 +57,10 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
       );
       final jsonBody = const JsonEncoder.withIndent('  ').convert(doc);
       final fileName = WalletExport.suggestedFileName();
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getTemporaryDirectory();
       final jsonPath = p.join(dir.path, fileName);
-      await File(jsonPath).writeAsString(jsonBody);
+      tmp = File(jsonPath);
+      await tmp.writeAsString(jsonBody);
 
       await SharePlus.instance.share(
         ShareParams(
@@ -85,6 +87,11 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
         );
       }
     } finally {
+      try {
+        if (tmp != null && await tmp.exists()) {
+          await tmp.delete();
+        }
+      } catch (_) {}
       if (mounted) setState(() => _busy = false);
     }
   }

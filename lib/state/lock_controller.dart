@@ -36,6 +36,9 @@ class LockController extends StateNotifier<LockPhase> {
     state = LockPhase.unlocked;
   }
 
+  /// Check the wallet PIN without changing lock phase (re-auth for send/wipe).
+  Future<bool> verifyWalletPin(String pin) => _pin.verifyPin(pin);
+
   /// Check wallet PIN, then optional game PIN.
   Future<UnlockOutcome> unlockWithPin(String pin) async {
     final result = await _pin.checkUnlockPin(pin);

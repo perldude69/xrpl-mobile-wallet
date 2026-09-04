@@ -45,7 +45,7 @@ String compressPublicKeyToXrplHex(List<int> pubRaw) {
 }
 
 void _log(String message) {
-  debugPrint('[LedgerHW] $message');
+  if (kDebugMode) debugPrint('[LedgerHW] $message');
 }
 
 /// APDU status word (last 2 bytes). Throws [LedgerDeviceException] when not 0x9000.
@@ -267,10 +267,7 @@ class LedgerUsbSession {
     required String step,
     int timeoutMs = _ioTimeoutMs,
   }) async {
-    _log(
-      '$step → APDU (${apdu.length}b) '
-      '${BytesUtils.toHexString(apdu, lowerCase: false)}',
-    );
+    _log('$step → APDU (${apdu.length}b)');
     try {
       // Re-check session before exchange (debug visibility).
       final before = await _usb.connectionInfo();
@@ -281,10 +278,7 @@ class LedgerUsbSession {
         identifier: device.identifier.isEmpty ? 'auto' : device.identifier,
         timeoutMs: timeoutMs,
       );
-      _log(
-        '$step ← ${result.length}b '
-        '${BytesUtils.toHexString(result, lowerCase: false)}',
-      );
+      _log('$step ← ${result.length}b');
       checkApduStatus(result, step: step);
       return result;
     } on LedgerDeviceException {
@@ -401,7 +395,7 @@ class LedgerXrpDevice {
     }
     final address = utf8.decode(data.sublist(offset, offset + addrLen));
     final publicKeyHex = compressPublicKeyToXrplHex(pubRaw);
-    _log('getAddress → $address pub=$publicKeyHex');
+    _log('getAddress → $address');
     return (address: address, publicKeyHex: publicKeyHex);
   }
 

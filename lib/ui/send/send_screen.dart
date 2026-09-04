@@ -9,9 +9,11 @@ import 'package:xrpl_mobile_wallet/data/ledger_device/ledger_xrp_device.dart';
 import 'package:xrpl_mobile_wallet/data/payments/payment_service.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
+import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/address_validator.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 
 enum _SendStep { asset, destination, amount, review, result }
 
@@ -44,6 +46,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   String? _error;
   bool _busy = false;
   PaymentSubmitResult? _result;
+  String? _feeDrops;
+  String? _feeError;
+  bool _feeBusy = false;
+  DestinationAccountPolicy? _destPolicy;
 
   final _paymentService = PaymentService();
 
@@ -64,13 +70,18 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       _selected = const LedgerBalance(currency: 'XRP', value: '0');
       _step = _SendStep.amount;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureBalances();
+    ScreenSecurity.enable();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _ensureBalances();
+      if (_hasPresetDestination) {
+        await _ensureDestinationPolicy();
+      }
     });
   }
 
   @override
   void dispose() {
+    ScreenSecurity.disable();
     _destinationController.dispose();
     _tagController.dispose();
     _amountController.dispose();
@@ -171,7 +182,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     _goTo(_SendStep.destination);
   }
 
-  void _continueFromDestination() {
+  Future<void> _continueFromDestination() async {
     final dest = _destinationController.text.trim();
     if (!AddressValidator.isValidClassic(dest)) {
       setState(() => _error = 'Enter a valid XRPL classic address');
@@ -181,16 +192,74 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       setState(() => _error = 'Destination cannot be the same as this wallet');
       return;
     }
+    final int? tag;
     try {
-      PaymentValidators.parseDestinationTag(_tagController.text);
+      tag = PaymentValidators.parseDestinationTag(_tagController.text);
     } on FormatException catch (e) {
       setState(() => _error = e.message);
       return;
     }
-    _goTo(_SendStep.amount);
+
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
+    try {
+      await _ensureConnected();
+      final policy = await _loadDestinationPolicy(dest);
+      final isXrp = _selected == null || _selected!.currency == 'XRP';
+      final policyError = policy.sendError(isXrp: isXrp, destinationTag: tag);
+      if (policyError != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = policyError;
+          _busy = false;
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _goTo(_SendStep.amount);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _busy = false;
+      });
+    }
   }
 
-  void _continueFromAmount() {
+  Future<DestinationAccountPolicy> _loadDestinationPolicy(String dest) async {
+    final policy =
+        await ref.read(xrplRpcClientProvider).fetchDestinationPolicy(dest);
+    if (mounted) setState(() => _destPolicy = policy);
+    return policy;
+  }
+
+  Future<void> _ensureDestinationPolicy() async {
+    final dest = _destinationController.text.trim();
+    if (!AddressValidator.isValidClassic(dest)) return;
+    try {
+      await _ensureConnected();
+      final policy = await _loadDestinationPolicy(dest);
+      if (!mounted) return;
+      int? tag;
+      try {
+        tag = PaymentValidators.parseDestinationTag(_tagController.text);
+      } on FormatException {
+        tag = null;
+      }
+      final isXrp = _selected == null || _selected!.currency == 'XRP';
+      final policyError = policy.sendError(isXrp: isXrp, destinationTag: tag);
+      if (policyError != null) {
+        setState(() => _error = policyError);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _continueFromAmount() async {
     final selected = _selected;
     if (selected == null) {
       setState(() => _error = 'No asset selected');
@@ -205,27 +274,88 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       return;
     }
 
-    // Soft balance check when we know a balance.
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
     try {
-      if (selected.currency == 'XRP') {
-        final sendDrops = BigInt.parse(XrpAmount.xrpToDrops(amount.trim()));
-        final balDrops =
-            BigInt.parse(XrpAmount.xrpToDrops(selected.value));
-        if (sendDrops > balDrops) {
-          setState(() => _error = 'Amount exceeds available balance');
-          return;
-        }
-      } else {
-        if (PaymentValidators.compareDecimal(amount, selected.value) > 0) {
-          setState(() => _error = 'Amount exceeds available balance');
-          return;
-        }
+      await _ensureConnected();
+      final dest = _destinationController.text.trim();
+      final policy = _destPolicy ?? await _loadDestinationPolicy(dest);
+      int? tag;
+      try {
+        tag = PaymentValidators.parseDestinationTag(_tagController.text);
+      } on FormatException catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+        return;
       }
-    } catch (_) {
-      // If balance parse fails, let the ledger reject.
-    }
+      final isXrp = selected.currency == 'XRP';
+      final policyError = policy.sendError(isXrp: isXrp, destinationTag: tag);
+      if (policyError != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = policyError;
+          _busy = false;
+        });
+        return;
+      }
 
-    _goTo(_SendStep.review);
+      final feeDrops =
+          (await ref.read(xrplRpcClientProvider).fetchMinimumFeeDrops())
+              .toString();
+      final feeErr = PaymentValidators.validateFeeDrops(feeDrops);
+      if (feeErr != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = feeErr;
+          _busy = false;
+        });
+        return;
+      }
+
+      if (isXrp) {
+        final spendErr = PaymentValidators.validateXrpSpendable(
+          amountXrp: amount,
+          availableXrp: selected.value,
+          feeDrops: feeDrops,
+          destUnfunded: !policy.exists,
+        );
+        if (spendErr != null) {
+          if (!mounted) return;
+          setState(() {
+            _error = spendErr;
+            _busy = false;
+          });
+          return;
+        }
+      } else if (PaymentValidators.compareDecimal(amount, selected.value) > 0) {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Amount exceeds available balance';
+          _busy = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _feeDrops = feeDrops;
+        _feeError = null;
+        _feeBusy = false;
+        _busy = false;
+      });
+      _goTo(_SendStep.review);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _busy = false;
+      });
+    }
   }
 
   String get _amountLabel {
@@ -239,6 +369,16 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   Future<void> _submit() async {
     final selected = _selected;
     if (selected == null) return;
+    if (_feeBusy || _feeError != null || _feeDrops == null) return;
+
+    final pinOk = await promptAndVerifyWalletPin(
+      context,
+      ref,
+      title: 'Confirm send',
+      message: 'Enter your wallet PIN to sign and submit this payment.',
+      confirmLabel: 'Sign',
+    );
+    if (!pinOk || !mounted) return;
 
     setState(() {
       _busy = true;
@@ -279,6 +419,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             destinationTag: tag,
             amountXrp: _amountController.text.trim(),
             rpc: rpc,
+            expectedFeeDrops: _feeDrops,
           );
         } else {
           result = await _paymentService.sendIou(
@@ -291,6 +432,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             issuer: selected.issuer ?? '',
             value: _amountController.text.trim(),
             rpc: rpc,
+            expectedFeeDrops: _feeDrops,
           );
         }
       }
@@ -375,6 +517,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
           rpc: rpc,
           publicKeyHex: got.publicKeyHex,
           signTransactionBlob: signTxBlob,
+          expectedFeeDrops: _feeDrops,
         );
       }
       return await _paymentService.sendIouWithLedger(
@@ -387,6 +530,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         rpc: rpc,
         publicKeyHex: got.publicKeyHex,
         signTransactionBlob: signTxBlob,
+        expectedFeeDrops: _feeDrops,
       );
     } finally {
       try {
@@ -670,7 +814,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
               const Divider(height: 24),
               _reviewRow('Network', networkState.network.label),
               const SizedBox(height: 8),
-              _reviewRow('Fee', 'Calculated automatically on submit'),
+              _reviewRow('Fee', _feeReviewLabel),
             ],
           ),
         ),
@@ -682,6 +826,14 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         style: Theme.of(context).textTheme.bodySmall,
       ),
     ];
+  }
+
+  String get _feeReviewLabel {
+    if (_feeBusy) return 'Estimating…';
+    if (_feeError != null) return _feeError!;
+    final drops = _feeDrops;
+    if (drops == null) return 'Unavailable';
+    return '${XrpAmount.dropsToXrp(drops)} XRP';
   }
 
   Widget _reviewRow(String label, String value) {
@@ -759,6 +911,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     }
 
     final isReview = _step == _SendStep.review;
+    final reviewBlocked = isReview && (_feeBusy || _feeError != null);
     return Row(
       children: [
         if (_step != _SendStep.asset)
@@ -772,7 +925,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         Expanded(
           flex: 2,
           child: FilledButton.icon(
-            onPressed: _busy
+            onPressed: (_busy || reviewBlocked)
                 ? null
                 : () {
                     switch (_step) {

@@ -13,6 +13,7 @@ import 'package:xrpl_mobile_wallet/ui/activity/tx_detail_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/send/send_screen.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_color.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/attach_keys/attach_keys_chooser_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/detail/add_rlusd_button.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/receive/receive_screen.dart';
 
@@ -92,6 +93,16 @@ class WalletDetailScreen extends ConsumerWidget {
                   ),
                 );
                 if (ok == true && context.mounted) {
+                  final pinOk = await promptAndVerifyWalletPin(
+                    context,
+                    ref,
+                    title: 'Delete wallet',
+                    message:
+                        'Enter your wallet PIN to erase this wallet and its '
+                        'secret from this device.',
+                    confirmLabel: 'Delete',
+                  );
+                  if (!pinOk || !context.mounted) return;
                   await ref
                       .read(walletListControllerProvider.notifier)
                       .deleteWallet(walletId);

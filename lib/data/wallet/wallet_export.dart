@@ -24,6 +24,8 @@ class WalletExport {
 
   static const int version = 1;
   static const int pbkdf2Iterations = 120000;
+  static const int minPbkdf2Iterations = pbkdf2Iterations;
+  static const int maxPbkdf2Iterations = 600000;
   static const int saltLength = 16;
   static const int minPasswordLength = 6;
 
@@ -81,11 +83,11 @@ class WalletExport {
     if (document['kdf'] != 'pbkdf2-sha256') {
       throw ArgumentError('Unsupported key derivation');
     }
-    final iter = document['iter'] as int? ?? pbkdf2Iterations;
-    final salt = base64Decode(document['salt'] as String);
-    final nonce = base64Decode(document['nonce'] as String);
-    final macBytes = base64Decode(document['mac'] as String);
-    final ct = base64Decode(document['ct'] as String);
+    final iter = _readIterations(document['iter']);
+    final salt = _decodeExact('salt', document['salt'], saltLength);
+    final nonce = _decodeBounded('nonce', document['nonce'], min: 8, max: 16);
+    final macBytes = _decodeBounded('mac', document['mac'], min: 12, max: 32);
+    final ct = _decodeBounded('ct', document['ct'], min: 1, max: 1024 * 1024);
 
     final secretKey = await _deriveKey(password, salt, iterations: iter);
     final algorithm = AesGcm.with256bits();
@@ -150,6 +152,50 @@ class WalletExport {
         'Password must be at least $minPasswordLength characters',
       );
     }
+  }
+
+  /// Rejects attacker-controlled iteration counts (1 = weak KDF, huge = freeze).
+  static int _readIterations(Object? raw) {
+    final int iter;
+    if (raw == null) {
+      iter = pbkdf2Iterations;
+    } else if (raw is int) {
+      iter = raw;
+    } else if (raw is num) {
+      iter = raw.toInt();
+    } else {
+      throw ArgumentError('Unsupported key derivation parameters');
+    }
+    if (iter < minPbkdf2Iterations || iter > maxPbkdf2Iterations) {
+      throw ArgumentError('Unsupported key derivation parameters');
+    }
+    return iter;
+  }
+
+  static List<int> _decodeExact(String field, Object? raw, int length) {
+    final bytes = _decodeBounded(field, raw, min: length, max: length);
+    return bytes;
+  }
+
+  static List<int> _decodeBounded(
+    String field,
+    Object? raw, {
+    required int min,
+    required int max,
+  }) {
+    if (raw is! String || raw.isEmpty) {
+      throw ArgumentError('Invalid export $field');
+    }
+    final List<int> bytes;
+    try {
+      bytes = base64Decode(raw);
+    } catch (_) {
+      throw ArgumentError('Invalid export $field');
+    }
+    if (bytes.length < min || bytes.length > max) {
+      throw ArgumentError('Invalid export $field');
+    }
+    return bytes;
   }
 
   static Uint8List _randomBytes(int length) {

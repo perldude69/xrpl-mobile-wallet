@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
+import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/pin_text_field.dart';
 
 class SetupPinScreen extends ConsumerStatefulWidget {
   const SetupPinScreen({super.key});
@@ -18,7 +19,14 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    ScreenSecurity.enable();
+  }
+
+  @override
   void dispose() {
+    ScreenSecurity.disable();
     _pinController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -72,29 +80,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 24),
-              TextField(
+              PinTextField(
                 controller: _pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 12,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                label: 'PIN',
                 enabled: !_busy,
               ),
               const SizedBox(height: 16),
-              TextField(
+              PinTextField(
                 controller: _confirmController,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm PIN',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 12,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                label: 'Confirm PIN',
                 enabled: !_busy,
                 onSubmitted: (_) => _submit(),
               ),

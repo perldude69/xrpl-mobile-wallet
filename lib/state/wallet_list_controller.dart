@@ -140,6 +140,7 @@ class WalletListController extends StateNotifier<WalletListState> {
   /// Persist an import: secret (if any) → KeyVault, metadata → SQLite.
   Future<void> addImported(ImportResult result) async {
     final account = result.account;
+    ensureUniqueAddress(state.wallets, account.address);
     final secret = result.secret;
     if (secret != null) {
       await _keyVault.saveSecret(account.id, secret);
@@ -307,6 +308,16 @@ class WalletListController extends StateNotifier<WalletListState> {
       state = state.copyWith(balances: next, refreshing: false);
     } catch (e) {
       state = state.copyWith(refreshing: false, errorMessage: e.toString());
+    }
+  }
+
+  /// Throws if [address] is already saved (create / import / attach-keys).
+  static void ensureUniqueAddress(
+    List<WalletAccount> wallets,
+    String address,
+  ) {
+    if (wallets.any((w) => w.address == address)) {
+      throw ArgumentError('A wallet with this address is already saved');
     }
   }
 

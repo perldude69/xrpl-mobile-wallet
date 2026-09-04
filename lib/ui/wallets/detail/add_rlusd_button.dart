@@ -9,6 +9,7 @@ import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 
 /// Adds the official RLUSD trust line for a signing or Ledger wallet.
 class AddRlusdButton extends ConsumerStatefulWidget {
@@ -55,6 +56,14 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
       ),
     );
     if (ok != true || !mounted) return;
+    final pinOk = await promptAndVerifyWalletPin(
+      context,
+      ref,
+      title: 'Confirm trust line',
+      message: 'Enter your wallet PIN to sign the RLUSD TrustSet.',
+      confirmLabel: 'Sign',
+    );
+    if (!pinOk || !mounted) return;
     await _submit();
   }
 

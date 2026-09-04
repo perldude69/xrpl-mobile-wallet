@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/data/endpoints/endpoint_preferences.dart';
+import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/data/wallet/wallet_export.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/pin_text_field.dart';
 
 class ChangePinResult {
   const ChangePinResult({required this.current, required this.next});
@@ -35,7 +36,14 @@ class ChangePinDialogState extends State<ChangePinDialog> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    ScreenSecurity.enable();
+  }
+
+  @override
   void dispose() {
+    ScreenSecurity.disable();
     _current.clear();
     _next.clear();
     _confirm.clear();
@@ -79,40 +87,19 @@ class ChangePinDialogState extends State<ChangePinDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            PinTextField(
               controller: _current,
-              decoration: const InputDecoration(
-                labelText: 'Current PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Current PIN',
             ),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _next,
-              decoration: const InputDecoration(
-                labelText: 'New PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'New PIN',
             ),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _confirm,
-              decoration: const InputDecoration(
-                labelText: 'Confirm new PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Confirm new PIN',
               onSubmitted: (_) => _submit(),
             ),
             if (_error != null) ...[
@@ -160,7 +147,14 @@ class _GamePinDialogState extends State<GamePinDialog> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    ScreenSecurity.enable();
+  }
+
+  @override
   void dispose() {
+    ScreenSecurity.disable();
     _wallet.clear();
     _game.clear();
     _confirm.clear();
@@ -214,40 +208,19 @@ class _GamePinDialogState extends State<GamePinDialog> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _wallet,
-              decoration: const InputDecoration(
-                labelText: 'Wallet PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Wallet PIN',
             ),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _game,
-              decoration: const InputDecoration(
-                labelText: 'Game PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Game PIN',
             ),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _confirm,
-              decoration: const InputDecoration(
-                labelText: 'Confirm game PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Confirm game PIN',
               onSubmitted: (_) => _submit(),
             ),
             if (_error != null) ...[
@@ -279,10 +252,12 @@ class ConfirmWalletPinDialog extends StatefulWidget {
     super.key,
     required this.title,
     required this.message,
+    this.confirmLabel = 'Confirm',
   });
 
   final String title;
   final String message;
+  final String confirmLabel;
 
   @override
   State<ConfirmWalletPinDialog> createState() => ConfirmWalletPinDialogState();
@@ -293,7 +268,14 @@ class ConfirmWalletPinDialogState extends State<ConfirmWalletPinDialog> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    ScreenSecurity.enable();
+  }
+
+  @override
   void dispose() {
+    ScreenSecurity.disable();
     _pin.clear();
     _pin.dispose();
     super.dispose();
@@ -319,16 +301,10 @@ class ConfirmWalletPinDialogState extends State<ConfirmWalletPinDialog> {
           children: [
             Text(widget.message),
             const SizedBox(height: 12),
-            TextField(
+            PinTextField(
               controller: _pin,
-              decoration: const InputDecoration(
-                labelText: 'Wallet PIN',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 12,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              label: 'Wallet PIN',
+              autofocus: true,
               onSubmitted: (_) => _submit(),
             ),
             if (_error != null) ...[
@@ -348,7 +324,7 @@ class ConfirmWalletPinDialogState extends State<ConfirmWalletPinDialog> {
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('Clear game PIN'),
+          child: Text(widget.confirmLabel),
         ),
       ],
     );
@@ -381,7 +357,14 @@ class PasswordDialogState extends State<PasswordDialog> {
   bool _obscure = true;
 
   @override
+  void initState() {
+    super.initState();
+    ScreenSecurity.enable();
+  }
+
+  @override
   void dispose() {
+    ScreenSecurity.disable();
     _password.clear();
     _confirm.clear();
     _password.dispose();
@@ -419,6 +402,10 @@ class PasswordDialogState extends State<PasswordDialog> {
             TextField(
               controller: _password,
               obscureText: _obscure,
+              autocorrect: false,
+              enableSuggestions: false,
+              enableIMEPersonalizedLearning: false,
+              autofillHints: const <String>[],
               decoration: InputDecoration(
                 labelText: 'Password',
                 border: const OutlineInputBorder(),
@@ -437,6 +424,10 @@ class PasswordDialogState extends State<PasswordDialog> {
               TextField(
                 controller: _confirm,
                 obscureText: _obscure,
+                autocorrect: false,
+                enableSuggestions: false,
+                enableIMEPersonalizedLearning: false,
+                autofillHints: const <String>[],
                 decoration: const InputDecoration(
                   labelText: 'Confirm password',
                   border: OutlineInputBorder(),

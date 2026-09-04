@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xrpl_mobile_wallet/config/app_exit.dart';
-import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
 import 'package:xrpl_mobile_wallet/data/watcher/account_watcher.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
@@ -11,6 +10,7 @@ import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/backup_settings.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/buy_coffee.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/network_settings.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/security_settings.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/create/create_wallet_screen.dart';
@@ -139,6 +139,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (doubleConfirmed != true || !mounted) return;
 
+    final pinOk = await promptAndVerifyWalletPin(
+      context,
+      ref,
+      title: 'Confirm wipe',
+      message:
+          'Enter your wallet PIN to erase all local data on this device.',
+      confirmLabel: 'Wipe',
+    );
+    if (!pinOk || !mounted) return;
+
     await _wipeAll();
   }
 
@@ -152,9 +162,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await db.wipeAll();
 
       await ref.read(keyVaultProvider).deleteAllSecrets();
+      await ref.read(pinServiceProvider).wipePins();
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(StorageKeys.biometricsEnabled);
+      await prefs.clear();
 
       await ref.read(walletListControllerProvider.notifier).reload();
       await ref.read(activityControllerProvider.notifier).loadFromCache();
@@ -287,7 +298,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: const Text('XRPL Mobile Wallet'),
           subtitle: const Text(
             'Android wallet manager for the XRP Ledger\n'
-            'Version 1.0.0 · Create or import BIP39 wallets',
+            'Version 1.0.1 · Create or import BIP39 wallets',
           ),
           isThreeLine: true,
           trailing: IconButton(

@@ -58,6 +58,122 @@ void main() {
     });
   });
 
+  group('PaymentValidators.validateFeeDrops', () {
+    test('accepts typical network fees', () {
+      expect(PaymentValidators.validateFeeDrops('12'), isNull);
+      expect(PaymentValidators.validateFeeDrops('100000'), isNull);
+    });
+
+    test('rejects missing, zero, and oversized fees', () {
+      expect(PaymentValidators.validateFeeDrops(null), isNotNull);
+      expect(PaymentValidators.validateFeeDrops('0'), isNotNull);
+      expect(PaymentValidators.validateFeeDrops('100001'), isNotNull);
+      expect(PaymentValidators.validateFeeDrops('20000000'), isNotNull);
+    });
+
+    test('reviewedFeeMatches requires the Review snapshot', () {
+      expect(
+        PaymentValidators.reviewedFeeMatches(
+          reviewedDrops: '12',
+          actualDrops: '12',
+        ),
+        isNull,
+      );
+      expect(
+        PaymentValidators.reviewedFeeMatches(
+          reviewedDrops: '12',
+          actualDrops: '13',
+        ),
+        isNotNull,
+      );
+      expect(
+        PaymentValidators.reviewedFeeMatches(
+          reviewedDrops: '12',
+          actualDrops: '100001',
+        ),
+        isNotNull,
+      );
+    });
+  });
+
+  group('PaymentValidators.validateXrpSpendable', () {
+    test('amount plus fee must fit in available XRP', () {
+      expect(
+        PaymentValidators.validateXrpSpendable(
+          amountXrp: '1',
+          availableXrp: '1.000012',
+          feeDrops: '12',
+          destUnfunded: false,
+        ),
+        isNull,
+      );
+      expect(
+        PaymentValidators.validateXrpSpendable(
+          amountXrp: '1',
+          availableXrp: '1',
+          feeDrops: '12',
+          destUnfunded: false,
+        ),
+        isNotNull,
+      );
+    });
+
+    test('unfunded destination requires account-create reserve', () {
+      expect(
+        PaymentValidators.validateXrpSpendable(
+          amountXrp: '0.5',
+          availableXrp: '10',
+          feeDrops: '12',
+          destUnfunded: true,
+        ),
+        isNotNull,
+      );
+      expect(
+        PaymentValidators.validateXrpSpendable(
+          amountXrp: '1',
+          availableXrp: '10',
+          feeDrops: '12',
+          destUnfunded: true,
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('DestinationAccountPolicy', () {
+    test('unfunded accounts are allowed without a tag', () {
+      expect(
+        DestinationAccountPolicy.unfunded.sendError(
+          isXrp: true,
+          destinationTag: null,
+        ),
+        isNull,
+      );
+    });
+
+    test('requireDestTag blocks send without a tag', () {
+      final policy = DestinationAccountPolicy.fromFlags(
+        DestinationAccountPolicy.lsfRequireDestTag,
+      );
+      expect(
+        policy.sendError(isXrp: true, destinationTag: null),
+        isNotNull,
+      );
+      expect(
+        policy.sendError(isXrp: true, destinationTag: 1),
+        isNull,
+      );
+    });
+
+    test('disallowIncomingXrp blocks XRP but not IOU', () {
+      final policy = DestinationAccountPolicy.fromFlags(
+        DestinationAccountPolicy.lsfDisallowXrp,
+      );
+      expect(policy.sendError(isXrp: true, destinationTag: null), isNotNull);
+      expect(policy.sendError(isXrp: false, destinationTag: null), isNull);
+    });
+  });
+
   group('PaymentValidators.compareDecimal', () {
     test('orders amounts', () {
       expect(PaymentValidators.compareDecimal('1', '2'), lessThan(0));

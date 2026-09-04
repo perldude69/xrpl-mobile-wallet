@@ -1,23 +1,47 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
 import 'package:xrpl_mobile_wallet/data/secure/pin_service.dart';
 
 void main() {
-  test('same pin+salt produces same hash', () {
-    const salt = 'abc123';
-    final a = PinService.hashPin('123456', salt);
-    final b = PinService.hashPin('123456', salt);
+  test('same pin+salt produces same hash', () async {
+    final salt = PinService.generateSalt();
+    final a = await PinService.hashPin('123456', salt);
+    final b = await PinService.hashPin('123456', salt);
     expect(a, equals(b));
+    expect(PinService.isLegacyPinHash(a), isFalse);
   });
 
-  test('different pins differ', () {
-    const salt = 'abc123';
-    expect(PinService.hashPin('123456', salt),
-        isNot(equals(PinService.hashPin('654321', salt))));
+  test('different pins differ', () async {
+    final salt = PinService.generateSalt();
+    final a = await PinService.hashPin('123456', salt);
+    final b = await PinService.hashPin('654321', salt);
+    expect(a, isNot(equals(b)));
   });
 
   test('min length enforced', () {
     expect(PinService.isPinFormatValid('12345'), isFalse);
     expect(PinService.isPinFormatValid('123456'), isTrue);
+  });
+
+  test('legacy sha256 verifier upgrades on successful unlock', () async {
+    const walletPin = '111111';
+    const salt = 'legacy-salt-value';
+    final map = {
+      StorageKeys.pinSalt: salt,
+      StorageKeys.pinHash: PinService.hashPinLegacy(walletPin, salt),
+    };
+    final migrated = PinService.memory(map);
+    expect(PinService.isLegacyPinHash(map[StorageKeys.pinHash]!), isTrue);
+    expect(await migrated.verifyPin(walletPin), isTrue);
+    expect(await migrated.verifyPin(walletPin), isTrue);
+    expect(PinService.isLegacyPinHash(map[StorageKeys.pinHash]!), isFalse);
+    expect(await migrated.verifyPin('000000'), isFalse);
+  });
+
+  test('hashEquals is length-sensitive', () {
+    expect(PinService.hashEquals('abcd', 'abcd'), isTrue);
+    expect(PinService.hashEquals('abcd', 'abce'), isFalse);
+    expect(PinService.hashEquals('abc', 'abcd'), isFalse);
   });
 
   group('game PIN', () {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
 
@@ -45,22 +46,31 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
   }
 
   Future<void> _setBiometrics(bool value) async {
+    if (value) {
+      final lock = ref.read(lockControllerProvider.notifier);
+      final available = await lock.canCheckBiometrics();
+      if (!available) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometrics are not available on this device'),
+            ),
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      final pinOk = await promptAndVerifyWalletPin(
+        context,
+        ref,
+        title: 'Enable biometrics',
+        message: 'Enter your wallet PIN to allow biometric unlock.',
+        confirmLabel: 'Enable',
+      );
+      if (!pinOk || !mounted) return;
+    }
     setState(() => _busy = true);
     try {
-      if (value) {
-        final lock = ref.read(lockControllerProvider.notifier);
-        final ok = await lock.canCheckBiometrics();
-        if (!ok) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Biometrics are not available on this device'),
-              ),
-            );
-          }
-          return;
-        }
-      }
       await ref
           .read(lockControllerProvider.notifier)
           .setBiometricsEnabled(value);
@@ -196,6 +206,7 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
         message:
             'Enter your wallet PIN to remove the game PIN. '
             'After clearing, three wrong unlock attempts will open Zerpland again.',
+        confirmLabel: 'Clear game PIN',
       ),
     );
     if (walletPin == null || !mounted) return;
