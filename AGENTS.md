@@ -68,7 +68,9 @@ dart run build_runner build --delete-conflicting-outputs
 
 Android toolchain: JDK 17, Android SDK with platform-tools and a recent `platforms;android-*` + `build-tools`. **CMake for APK builds must be the SDK-bundled one** (`sdkmanager "cmake;3.22.1"`): the transitive `jni` package's Android module fails with `[CXX1301]` if only system CMake is installed.
 
-Do not commit `*.apk` / `build/`. Release currently uses debug signing for personal sideload.
+Do not commit `*.apk` / `build/` / `android/key.properties` / keystores.
+Play bundles sign with the upload keystore via `android/key.properties`.
+Without that file, release falls back to debug signing for personal sideload.
 
 ---
 

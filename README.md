@@ -38,9 +38,18 @@ flutter build apk --release
 
 APK path: `build/app/outputs/flutter-apk/app-release.apk`
 
-Release builds currently use the debug signing config for personal sideload
-(see `android/app/build.gradle.kts`). Do not distribute those builds through
-a store.
+Play Store bundle:
+
+```bash
+flutter build appbundle --release
+```
+
+AAB path: `build/app/outputs/bundle/release/app-release.aab`
+
+Release signing uses `android/key.properties` (gitignored) and the upload
+keystore. Without that file, release falls back to the debug key for personal
+sideload. GitHub APKs were debug-signed; a Play install cannot upgrade those
+in place (different cert, same `applicationId`).
 
 ## Security
 
