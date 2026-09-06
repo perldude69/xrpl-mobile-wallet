@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XRPL Mobile Wallet — Security Re-Audit (Release APK)</title>
+  <style>
+    :root {
+      --bg: #0b1216;
+      --bg-elev: #121c22;
+      --panel: #162229;
+      --teal: #00a3bf;
+      --teal-dim: #007a90;
+      --text: #e8f1f4;
+      --muted: #8aa0aa;
+      --warn: #f0b429;
+      --danger: #e85d5d;
+      --critical: #ff6b8a;
+      --ok: #3ecf8e;
+      --low: #6cb6ff;
+      --info: #9aa8b3;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 14px;
+      --max: 52rem;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 163, 191, 0.16), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--teal); }
+    a:hover { color: #4fd0e4; }
+    .wrap {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 5rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.7rem, 4vw, 2.35rem);
+      letter-spacing: -0.03em;
+    }
+    header.hero .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0.4rem 0 1.2rem;
+    }
+    header.hero .meta span { margin-right: 1.25rem; }
+    .lede {
+      max-width: 48rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin: 0;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    nav.toc {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1rem 1.15rem;
+      font-size: 0.88rem;
+    }
+    nav.toc strong { display: block; margin-bottom: 0.55rem; color: var(--teal); }
+    nav.toc ol { margin: 0; padding-left: 1.15rem; color: var(--muted); }
+    nav.toc li { margin: 0.28rem 0; }
+    nav.toc a { color: var(--text); text-decoration: none; }
+    nav.toc a:hover { color: var(--teal); }
+    main { min-width: 0; }
+    section {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.45rem 1.5rem 1.65rem;
+      margin-bottom: 1.15rem;
+    }
+    h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.28rem;
+      letter-spacing: -0.02em;
+    }
+    h3 {
+      margin: 1.4rem 0 0.45rem;
+      font-size: 1.08rem;
+    }
+    h3 .id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--teal);
+      margin-right: 0.35rem;
+    }
+    p { margin: 0.55rem 0; }
+    ul, ol { color: var(--text); }
+    li { margin: 0.28rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.8rem 0 0.2rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.65rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.18rem 0.5rem;
+      border-radius: 999px;
+      vertical-align: middle;
+    }
+    .badge.critical { background: rgba(255, 107, 138, 0.18); color: var(--critical); }
+    .badge.high { background: rgba(232, 93, 93, 0.18); color: var(--danger); }
+    .badge.medium { background: rgba(240, 180, 41, 0.16); color: var(--warn); }
+    .badge.low { background: rgba(108, 182, 255, 0.16); color: var(--low); }
+    .badge.info { background: rgba(154, 168, 179, 0.16); color: var(--info); }
+    .badge.resolved { background: rgba(62, 207, 142, 0.16); color: var(--ok); }
+    .badge.pass { background: rgba(62, 207, 142, 0.16); color: var(--ok); }
+    .finding-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.55rem 0.8rem;
+    }
+    .kicker {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 0.35rem;
+    }
+    pre {
+      background: #0a1014;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      color: #d5e6ec;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em;
+    }
+    p code, li code, td code {
+      background: rgba(255,255,255,0.06);
+      padding: 0.08rem 0.32rem;
+      border-radius: 4px;
+    }
+    .note {
+      border-left: 3px solid var(--teal);
+      padding: 0.15rem 0 0.15rem 0.9rem;
+      color: var(--muted);
+    }
+    hr.sep {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 1.4rem 0;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 1.5rem;
+    }
+    figure.evidence {
+      margin: 1rem 0 0.4rem;
+      background: #0a1014;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem;
+      max-width: 22rem;
+    }
+    figure.evidence img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      background: #000;
+    }
+    figure.evidence figcaption {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 0.45rem;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      section, nav.toc { background: #fff; border-color: #ddd; }
+      a { color: #0645ad; }
+      pre { background: #f6f8fa; color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">Security Re-Audit · Release APK</p>
+      <h1>XRPL Mobile Wallet — Security Re-Audit (v1.0.1 build 2)</h1>
+      <p class="meta">
+        <span>05 September 2026</span>
+        <span>Auditor: Omen Alpha (independent code + dynamic audit)</span>
+        <span>Package <code>info.richlist.wallet</code> · versionName 1.0.1 (versionCode 2)</span>
+      </p>
+      <p class="lede">
+        Re-audit of the release build against the
+        OWASP MASTG / MASVS v2 methodology: static source review
+        (Dart / Kotlin / Java / Gradle), dependency review, APK static analysis
+        (<code>aapt2</code>, <code>apksigner</code>, <code>libapp.so</code>
+        strings), and dynamic testing of the freshly installed release APK on a
+        Pixel 8 Pro (Android 16): FLAG_SECURE screencaps, 90&nbsp;s auto-lock
+        timing, logcat secret scan, component export checks. This pass verifies
+        the fixes from the two prior audits; prior XRW IDs are reused for the
+        same issues.
+      </p>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Contents">
+        <strong>Contents</strong>
+        <ol>
+          <li><a href="#verdict">Verdict</a></li>
+          <li><a href="#method">Methodology</a></li>
+          <li><a href="#packaging">Build &amp; packaging</a></li>
+          <li><a href="#platform">Manifest &amp; attack surface</a></li>
+          <li><a href="#crypto">Secrets &amp; cryptography</a></li>
+          <li><a href="#watcher">Background watcher</a></li>
+          <li><a href="#logging">Logging &amp; leakage</a></li>
+          <li><a href="#screen">Screen capture &amp; UI hardening</a></li>
+          <li><a href="#tests">Tests &amp; static analysis</a></li>
+          <li><a href="#register">Findings register</a></li>
+          <li><a href="#limitations">Limitations</a></li>
+          <li><a href="#signoff">Sign-off</a></li>
+        </ol>
+      </nav>
+
+      <main>
+        <section id="verdict">
+          <h2>Verdict</h2>
+          <p>
+            <span class="badge resolved">PASS</span>
+            <span class="badge info">0 High</span>
+            <span class="badge info">0 Medium</span>
+            <span class="badge info">2 Informational (accepted)</span>
+          </p>
+          <p>
+            <strong>Pass with two open, accepted informational items.</strong>
+            No High or Medium findings remain. The single High finding from the
+            previous round (<span class="id">XRW-01</span>, debug-signed release
+            APK) is <strong>resolved in this build</strong>:
+            <code>build/app/outputs/flutter-apk/app-release.apk</code> verifies
+            under APK Signature Scheme v2 with the RSA-2048 upload keystore
+            (CN=James Hughes, OU=Rich-List.info). The two Low findings
+            (XRW-21 Ledger Java logs, XRW-22 obscured-touch filter) are also
+            resolved and verified on the installed binary. In a follow-up pass
+            the same day, XRW-23 (un-obfuscated snapshot + plain storage key
+            names) was resolved via obfuscated release builds
+            (<code>tool/build_release.sh</code>) and runtime-derived storage
+            key names (<code>KeyNames</code>).
+          </p>
+          <table>
+            <thead><tr><th>Severity</th><th>Open</th><th>Resolved this round</th></tr></thead>
+            <tbody>
+              <tr><td><span class="badge high">High</span></td><td>0</td><td>XRW-01</td></tr>
+              <tr><td><span class="badge medium">Medium</span></td><td>0</td><td>—</td></tr>
+              <tr><td><span class="badge low">Low</span></td><td>0</td><td>XRW-21, XRW-22</td></tr>
+              <tr><td><span class="badge info">Informational</span></td><td>2 (accepted)</td><td>XRW-23</td></tr>
+            </tbody>
+          </table>
+          <p class="note">
+            XRW-23 resolution re-verified on the device: fresh install → PIN →
+            import family seed (golden genesis address) → wipe → re-import of
+            the saved wallet list (encrypted export, watch-only) → force-stop /
+            relaunch → PIN unlock with data intact. Obfuscation verified by
+            <code>strings</code> on the shipped <code>libapp.so</code>.
+          </p>
+        </section>
+
+        <section id="method">
+          <h2>Methodology</h2>
+          <p>
+            Standard: OWASP Mobile Application Security Testing Guide (MASTG)
+            with MASVS v2 control groups (CODE, CRYPTO, RESILIENCE, PLATFORM,
+            NETWORK, STORAGE, AUTH). Prior reports:
+            <a href="2026-09-05-owasp-mobile-audit-report.html">2026-09-05 OWASP Mobile Audit</a>
+            and
+            <a href="2026-09-03-security-audit-report.html">2026-09-03 security audit</a>.
+          </p>
+          <p>Work performed:</p>
+          <ul>
+            <li>
+              Static source review of <code>lib/</code>
+              (<code>KeyVault</code>, <code>PinService</code>,
+              <code>ScreenSecurity</code>, <code>PaymentService</code>,
+              <code>EntropyMixer</code>, <code>WalletExport</code>,
+              <code>watcher_service.dart</code>,
+              <code>endpoint_preferences.dart</code>,
+              <code>LockLifecycle</code>), <code>android/app/</code>
+              (manifest, <code>MainActivity.kt</code>,
+              <code>build.gradle.kts</code>), and
+              <code>packages/ledger_usb_plus/</code> (new
+              <code>LedgerLog</code>)
+            </li>
+            <li>
+              APK analysis of the built release:
+              <code>aapt2 dump badging / xmltree</code>,
+              <code>apksigner verify --print-certs</code>,
+              <code>strings</code> over <code>libapp.so</code>
+            </li>
+            <li>
+              Dynamic checks on Pixel 8 Pro (<code>husky</code>,
+              serial <code>38181FDJG00F43</code>, Android 16): install, launch,
+              permission prompt, FLAG_SECURE screencaps, 90&nbsp;s auto-lock
+              timing, full-session logcat secret scan, notification permission
+              grant, UI-hierarchy walk of create/import flows
+            </li>
+            <li><code>flutter analyze</code> and <code>flutter test</code> (163 tests)</li>
+          </ul>
+        </section>
+
+        <section id="packaging">
+          <h2>Build &amp; packaging (MASVS-CODE / MASVS-RESILIENCE)</h2>
+          <table>
+            <thead><tr><th>Check</th><th>Result</th><th>Evidence</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Release signing</td>
+                <td><span class="badge resolved">Pass</span> <span class="badge resolved">XRW-01 resolved</span></td>
+                <td>
+                  <code>apksigner verify --print-certs</code>: v2 scheme
+                  verified; signer
+                  <code>CN=James Hughes, OU=Rich-List.info, O=Rich-List,
+                  L=Phoenix, ST=Arizona, C=US</code>, RSA-2048, SHA-256 cert
+                  digest <code>f90f349b…bbe72bb</code>. Prior builds were
+                  <code>CN=Android Debug</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>Keystore fallback</td>
+                <td><span class="badge pass">Pass</span> (documented)</td>
+                <td>
+                  <code>android/app/build.gradle.kts</code> falls back to debug
+                  signing only when <code>android/key.properties</code> is
+                  absent (personal sideload). This build used the upload key.
+                  Residual risk: a release built without the file is
+                  debug-signed — see note N-2.
+                </td>
+              </tr>
+              <tr>
+                <td>Minify / obfuscation</td>
+                <td><span class="badge resolved">XRW-23 resolved</span></td>
+                <td>
+                  Release builds now run <code>tool/build_release.sh</code>
+                  (<code>--obfuscate --split-debug-info=build/symbols/android</code>).
+                  Verified on the rebuilt APK: no class names
+                  (<code>KeyVault</code>, <code>PinService</code>,
+                  <code>PaymentService</code>…), no structured storage key
+                  names, and no DWARF sections in the shipped
+                  <code>libapp.so</code>. Sensitive storage keys are derived at
+                  runtime from XOR-encoded role tags
+                  (<code>lib/data/secure/key_names.dart</code>), so the four
+                  names are 43-char opaque base64 in storage. Symbol maps stay
+                  private in <code>build/symbols/</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>debuggable</code></td>
+                <td><span class="badge pass">Pass</span></td>
+                <td>Not present in the merged manifest.</td>
+              </tr>
+              <tr>
+                <td>Version</td>
+                <td><span class="badge pass">Pass</span></td>
+                <td>versionName 1.0.1, versionCode 2, targetSdk 36, minSdk 24.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="platform">
+          <h2>Manifest &amp; attack surface (MASVS-PLATFORM)</h2>
+          <p><code>aapt2 dump xmltree</code> on the merged manifest of the installed APK:</p>
+          <table>
+            <thead><tr><th>Control</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>allowBackup</code></td>
+                <td><span class="badge pass">Pass</span> — <code>false</code>; bmgr / auto-backup cannot copy app data off device.</td>
+              </tr>
+              <tr>
+                <td>Exported components</td>
+                <td>
+                  <span class="badge pass">Pass</span> — only
+                  <code>MainActivity</code> (launcher, <code>singleTop</code>,
+                  <code>taskAffinity=""</code>). FGS
+                  <code>BackgroundService</code>, <code>WatchdogReceiver</code>,
+                  <code>BootReceiver</code>, and the notification
+                  <code>FileProvider</code> are all <code>exported="false"</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>Permissions</td>
+                <td>
+                  <span class="badge pass">Pass</span> —
+                  <code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>,
+                  <code>CAMERA</code> (QR scan),
+                  <code>POST_NOTIFICATIONS</code>,
+                  <code>FOREGROUND_SERVICE(_DATA_SYNC)</code>,
+                  <code>WAKE_LOCK</code>,
+                  <code>RECEIVE_BOOT_COMPLETED</code>,
+                  <code>VIBRATE</code>, <code>USE_BIOMETRIC</code>.
+                  No location, contacts, storage, SMS, or phone permissions.
+                </td>
+              </tr>
+              <tr>
+                <td>Cleartext traffic</td>
+                <td>
+                  <span class="badge pass">Pass</span> — no
+                  <code>usesCleartextTraffic</code> override; targetSdk 36
+                  blocks cleartext by default. Built-in endpoints are all
+                  <code>https://</code> / <code>wss://</code>; custom endpoints
+                  validated in <code>EndpointUrl.validate</code> (http / ws
+                  rejected).
+                </td>
+              </tr>
+              <tr>
+                <td>USB host</td>
+                <td>
+                  <span class="badge pass">Pass</span> —
+                  <code>USB_DEVICE_ATTACHED</code> intent-filter +
+                  <code>usb_device_filter.xml</code> (Ledger). Per-device grant
+                  via system dialog; not a runtime permission.
+                </td>
+              </tr>
+              <tr>
+                <td>Tapjacking</td>
+                <td>
+                  <span class="badge resolved">XRW-22 resolved</span> —
+                  <code>filterTouchesWhenObscured</code> applied on
+                  <code>decorView</code> + content children in
+                  <code>MainActivity.onCreate</code> / <code>onResume</code>.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="crypto">
+          <h2>Secrets &amp; cryptography (MASVS-CRYPTO / MASVS-STORAGE)</h2>
+          <table>
+            <thead><tr><th>Area</th><th>Finding</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Wallet secrets</td>
+                <td>
+                  Mnemonics / family seeds stored only in
+                  <code>flutter_secure_storage</code> (Android Keystore) via
+                  <code>KeyVault</code>; <code>resetOnError: false</code>
+                  documented so a Keystore glitch cannot silently wipe seeds.
+                  Secrets are method arguments to <code>PaymentService</code>,
+                  never stored on the service or logged.
+                </td>
+              </tr>
+              <tr>
+                <td>PIN verifier</td>
+                <td>
+                  <span class="badge resolved">XRW-03 resolved (re-confirmed)</span> —
+                  PBKDF2-SHA256, 120k iterations, 16-byte
+                  <code>Random.secure</code> salt, constant-time
+                  <code>hashEquals</code>, transparent legacy SHA-256 →
+                  PBKDF2 upgrade on next successful unlock.
+                </td>
+              </tr>
+              <tr>
+                <td>Auto-lock</td>
+                <td>
+                  <span class="badge pass">Pass (device-verified)</span> —
+                  <code>LockController.lock()</code> after 90&nbsp;s in
+                  background (<code>LockLifecycle</code>,
+                  <code>AppConfig.autoLockSeconds</code>). See
+                  <a href="#screen">§ Screen capture &amp; device checks</a>.
+                </td>
+              </tr>
+              <tr>
+                <td>Failed attempts</td>
+                <td>
+                  <span class="badge info">XRW-02</span> — in-memory counter
+                  only (accepted). Game-PIN decoy after 3 fails is also
+                  in-memory.
+                </td>
+              </tr>
+              <tr>
+                <td>PIN vs KEK</td>
+                <td>
+                  <span class="badge info">XRW-19</span> — the PIN is an
+                  application lock, not a key-encryption key; Keystore guards
+                  the seeds (accepted by design).
+                </td>
+              </tr>
+              <tr>
+                <td>Export</td>
+                <td>
+                  <code>WalletExport</code>: AES-256-GCM + PBKDF2-SHA256;
+                  envelope contains names + addresses only (no secrets);
+                  iteration count clamped 120k–600k against weak-KDF / DoS;
+                  bounded field lengths.
+                </td>
+              </tr>
+              <tr>
+                <td>Entropy</td>
+                <td>
+                  <code>EntropyMixer.mix</code>: OS CSPRNG 32 bytes is
+                  mandatory input; dice / word ritual hashes are mixed in via
+                  domain-separated SHA-256
+                  (<code>xrpl-mobile-wallet/v1/entropy</code>). Weak ritual
+                  input cannot weaken the wallet.
+                </td>
+              </tr>
+              <tr>
+                <td>Derivation</td>
+                <td>
+                  Mnemonic → BIP44 <code>m/44'/144'/0'/0/0</code> secp256k1
+                  (matches <code>xrpl.js</code>); golden tests pin the
+                  abandon-phrase address
+                  <code>rHsMGQEkVNJmpGWs8XUBoTBiAAbwxZN5v3</code> and genesis
+                  seed <code>snoPBr…</code> →
+                  <code>rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh</code>.
+                  <code>PaymentService.privateKeyFromSecret</code> matches
+                  <code>WalletImporter</code>; ed25519 fallback only on
+                  expected-address match.
+                </td>
+              </tr>
+              <tr>
+                <td>Fee / amount safety</td>
+                <td>
+                  Sign-time fee must equal the reviewed fee and stay ≤ 0.1 XRP
+                  (<code>validateFeeDrops</code>,
+                  <code>reviewedFeeMatches</code>); spendable check includes
+                  the reserve for unfunded destinations; destination-tag /
+                  disallow-XRP account flags enforced pre-sign.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="watcher">
+          <h2>Background watcher (MASVS-NETWORK / STORAGE)</h2>
+          <ul>
+            <li>
+              The watcher isolate (<code>watcherOnStart</code>) imports only
+              the public-address book, status store, and rate store — no
+              <code>KeyVault</code> / <code>PinService</code> imports. The
+              shared file is <code>watcher_address_book.json</code> (public
+              addresses + network only).
+            </li>
+            <li>
+              WSS failover is ordered (user prefs → catalog → legacy book
+              value); reconnect uses exponential backoff 2→60&nbsp;s with a
+              12&nbsp;s connect timeout.
+            </li>
+            <li>
+              Seen-hash dedupe is bounded (200 persisted / 500 in-memory) in
+              SharedPreferences — non-sensitive tx hashes only.
+            </li>
+            <li>
+              Notifications contain label, tx type, amount, direction — no
+              secrets. Amounts + labels can be visible on the lock screen (see
+              note N-1).
+            </li>
+            <li>
+              The foreground-service notification shows <strong>host only</strong>
+              (query string dropped by <code>EndpointUrl.hostOf</code>) —
+              matches the no-URL-leak rule.
+            </li>
+          </ul>
+        </section>
+
+        <section id="logging">
+          <h2>Logging &amp; data leakage (MASVS-STORAGE-2)</h2>
+          <ul>
+            <li>
+              Full-session logcat scan on the installed release while setting a
+              PIN, unlocking, and navigating: <strong>no mnemonics, seeds, PIN
+              digits, or private key material from the app</strong>. (Test
+              harness artifacts only: <code>adb shell input text</code>
+              commands echo in adbd logs — that is the audit tooling, not the
+              app.)
+            </li>
+            <li>
+              <span class="badge resolved">XRW-21 resolved</span> — vendored
+              Ledger plugin: new <code>LedgerLog</code> gates all
+              <code>Log.i / w / e</code> behind <code>BuildConfig.DEBUG</code>;
+              release logcat shows no <code>LedgerUSB</code> lines. Dart-side
+              APDU dumps remain <code>kDebugMode</code>-gated (XRW-10).
+            </li>
+            <li>
+              SQLite (Drift) stores only public metadata: labels, addresses,
+              accent color, <code>useLedger</code>, ledger index. No secrets
+              in the DB.
+            </li>
+          </ul>
+        </section>
+
+        <section id="screen">
+          <h2>Screen capture &amp; device checks (MASVS-PLATFORM-3)</h2>
+          <p>
+            Dynamic screencap tests on the installed release
+            (<code>adb exec-out screencap</code>; center-crop mean = 0 → 100 %
+            black):
+          </p>
+          <table>
+            <thead><tr><th>Surface</th><th>Screencap result</th><th>Evidence</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>PIN setup (first run)</td>
+                <td><span class="badge pass">Black</span></td>
+                <td><code>evidence/reaudit-2026-09-05-pin-setup-secure-black.png</code></td>
+              </tr>
+              <tr>
+                <td>Entropy ritual / recovery-phrase flow</td>
+                <td><span class="badge pass">Black</span></td>
+                <td><code>evidence/reaudit-2026-09-05-entropy-ritual-secure-black.png</code></td>
+              </tr>
+              <tr>
+                <td>Auto-locked PIN screen</td>
+                <td><span class="badge pass">Black</span></td>
+                <td><code>evidence/reaudit-2026-09-05-autolock-pin-secure-black.png</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <figure class="evidence">
+            <img src="evidence/reaudit-2026-09-05-pin-setup-secure-black.png"
+                 alt="adb screencap of the first-run PIN setup screen: blacked out by FLAG_SECURE" />
+            <figcaption>
+              Evidence for FLAG_SECURE, 05 Sep 2026: <code>adb shell screencap</code>
+              of the focused release MainActivity on the PIN setup surface. The
+              Flutter surface is blacked out (center-crop mean = 0). The same
+              result was produced on the entropy-ritual and auto-locked PIN
+              surfaces.
+            </figcaption>
+          </figure>
+
+          <p>
+            <code>ScreenSecurity</code> uses a nested hold counter so an inner
+            dialog (e.g. PIN re-auth over Send) cannot drop the flag while an
+            outer secret surface is open.
+          </p>
+
+          <h3>Auto-lock timing test</h3>
+          <p>
+            Unlock → <code>KEYCODE_HOME</code> → wait 100&nbsp;s → relaunch →
+            UI hierarchy shows <code>"Enter your PIN to unlock"</code>. The
+            first readings in this session appeared to show the app still
+            unlocked after 100&nbsp;s in background; those were stale
+            <code>uiautomator</code> dump files (the dump step failed
+            silently and an old XML was re-read). Re-tested with a
+            file-freshness guard (<code>rm</code> before, existence check
+            after): auto-lock engages correctly. Control: resume after
+            ~7&nbsp;s background → stays unlocked (expected, under 90&nbsp;s).
+          </p>
+
+          <h3>Other dynamic observations</h3>
+          <ul>
+            <li>
+              First launch shows the system notification-permission prompt;
+              grant / deny both leave the wallet functional.
+            </li>
+            <li>
+              Discarding an in-progress wallet creation exits the process
+              (<code>SystemNavigator.pop</code> path) rather than returning to
+              an unlocked shell — matches the AGENTS.md exit rule.
+            </li>
+            <li>
+              Test data created during the audit (test PIN, throwaway
+              "AuditWallet" flow state) was wiped with
+              <code>adb shell pm clear</code> afterwards.
+            </li>
+          </ul>
+        </section>
+
+        <section id="tests">
+          <h2>Tests &amp; static analysis</h2>
+          <ul>
+            <li><code>flutter analyze</code>: no issues.</li>
+            <li>
+              <code>flutter test</code>: 163 / 163 pass (import / derivation
+              goldens, PIN service, export crypto, watchers, endpoint prefs,
+              connection health, RLUSD TrustSet, APDU helpers).
+            </li>
+          </ul>
+        </section>
+
+        <section id="register">
+          <h2>Findings register (delta vs 2026-09-05 OWASP report)</h2>
+          <table>
+            <thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Status this round</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="id">XRW-01</span></td>
+                <td>Release APK signed with debug key</td>
+                <td><span class="badge high">High</span></td>
+                <td><span class="badge resolved">Resolved</span> — v2-signed with upload keystore (§ Packaging).</td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-21</span></td>
+                <td>Ledger Java plugin INFO logs in release</td>
+                <td><span class="badge low">Low</span></td>
+                <td>
+                  <span class="badge resolved">Resolved</span> —
+                  <code>LedgerLog</code> gates on <code>BuildConfig.DEBUG</code>;
+                  no <code>LedgerUSB</code> lines in release logcat.
+                </td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-22</span></td>
+                <td>PIN / send confirm lack obscured-touch filter</td>
+                <td><span class="badge low">Low</span></td>
+                <td>
+                  <span class="badge resolved">Resolved</span> —
+                  <code>filterTouchesWhenObscured</code> in
+                  <code>MainActivity</code> onCreate + onResume.
+                </td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-02</span></td>
+                <td>No persistent PIN throttling</td>
+                <td><span class="badge info">Informational</span></td>
+                <td><span class="badge info">Open (accepted)</span> — in-memory counter; full wipe available.</td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-19</span></td>
+                <td>PIN is app lock, not a KEK</td>
+                <td><span class="badge info">Informational</span></td>
+                <td><span class="badge info">Open (accepted by design)</span></td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-23</span></td>
+                <td>Un-obfuscated Dart snapshot; key names in <code>libapp.so</code></td>
+                <td><span class="badge info">Informational</span></td>
+                <td>
+                  <span class="badge resolved">Resolved</span> —
+                  <code>tool/build_release.sh</code> obfuscates the snapshot;
+                  sensitive storage keys derived at runtime
+                  (<code>KeyNames</code>). Breaking for upgraders: stored
+                  secrets / PINs must be re-imported.
+                </td>
+              </tr>
+              <tr>
+                <td><span class="id">XRW-03…18, XRW-20</span></td>
+                <td>See prior reports</td>
+                <td>—</td>
+                <td>
+                  Remain resolved; spot-re-verified where relevant to this
+                  round (signing, FLAG_SECURE, exports, fee guards).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>New notes from this round (no XRW ID; not actionable as vulnerabilities)</h3>
+          <ul>
+            <li>
+              <strong>N-1 (privacy note):</strong> watcher notifications
+              include wallet label, amount, and direction; on the lock screen
+              Android may show these by default. Consider a future
+              "hide amounts" toggle; users can also disable lock-screen
+              notification content in system settings.
+            </li>
+            <li>
+              <strong>N-2 (residual risk):</strong> debug-keystore fail-open in
+              <code>build.gradle.kts</code> remains as a foot-gun for CI.
+              Suggested hardening: fail the build when
+              <code>key.properties</code> is missing for <code>release</code>
+              builds, or keep the fallback but add a runtime "debug-signed
+              build" banner.
+            </li>
+          </ul>
+        </section>
+
+        <section id="limitations">
+          <h2>Method &amp; tool versions</h2>
+          <table>
+            <thead><tr><th>Item</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Analyze / tests</td><td><code>flutter analyze</code>, <code>flutter test</code> (Flutter 3, Dart SDK ^3.10.4)</td></tr>
+              <tr><td>APK tooling</td><td><code>aapt2</code> / <code>apksigner</code> (build-tools 36.1.0), <code>keytool -printcert</code>, <code>strings</code></td></tr>
+              <tr><td>Device</td><td>Pixel 8 Pro (<code>husky</code>, serial <code>38181FDJG00F43</code>), Android 16</td></tr>
+              <tr><td>Install</td><td><code>adb install -r</code> of <code>build/app/outputs/flutter-apk/app-release.apk</code> (85.7 MB), 2026-09-05</td></tr>
+              <tr><td>Cleanup</td><td>Test PIN + flow state wiped via <code>adb shell pm clear</code> after the audit</td></tr>
+            </tbody>
+          </table>
+          <p class="note">
+            Not covered: no overlay/tapjacking app was installed for a live
+            obscured-touch test (code-verified only); no Ledger device was
+            attached (XRW-21 verified by logcat absence + source review); no
+            rooted-device forensics. A Markdown copy of this report exists at
+            <a href="2026-09-05-reaudit-release-apk.md">2026-09-05-reaudit-release-apk.md</a>.
+          </p>
+        </section>
+
+        <section id="signoff">
+          <h2>Sign-off</h2>
+          <p>
+            The app follows its local-first, secrets-in-Keystore design
+            correctly. All previously open High / Low findings are fixed and
+            dynamically verified on the installed release binary. Remaining
+            items are documented, low-impact, and accepted.
+          </p>
+          <p class="note">
+            Related: <a href="../privacy/privacy.md">docs/privacy/privacy.md</a> —
+            what the app stores, sends, and never collects.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      XRPL Mobile Wallet security re-audit · 05 September 2026 ·
+      screenshots in the <code>evidence/</code> folder ·
+      see also the
+      <a href="2026-09-05-owasp-mobile-audit-report.html">OWASP Mobile Audit report</a>
+      and the <a href="2026-09-03-security-audit-report.html">03 September audit</a>.
+    </footer>
+  </div>
+</body>
+</html>

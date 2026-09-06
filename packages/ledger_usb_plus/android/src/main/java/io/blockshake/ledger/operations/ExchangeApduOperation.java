@@ -1,9 +1,8 @@
 package io.blockshake.ledger.operations;
 
 import android.content.Context;
-import android.util.Log;
-
 import io.blockshake.ledger.LedgerException;
+import io.blockshake.ledger.LedgerLog;
 import io.blockshake.ledger.LedgerManager;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -14,7 +13,6 @@ import io.flutter.plugin.common.MethodChannel;
  */
 public class ExchangeApduOperation extends UsbMethodCallOperation {
 
-    private static final String TAG = "LedgerUSB";
     private final LedgerManager manager;
 
     public ExchangeApduOperation(LedgerManager manager) {
@@ -36,14 +34,14 @@ public class ExchangeApduOperation extends UsbMethodCallOperation {
             identifier = "auto";
         }
         try {
-            Log.i(TAG, "exchangeApdu op: len=" + apdu.length + " id=" + identifier);
+            LedgerLog.i( "exchangeApdu op: len=" + apdu.length + " id=" + identifier);
             byte[] response = manager.exchangeApdu(apdu, identifier, timeoutMs);
             result.success(response);
         } catch (LedgerException ex) {
-            Log.e(TAG, "exchangeApdu failed: " + ex.getMessage());
+            LedgerLog.e( "exchangeApdu failed: " + ex.getMessage());
             result.error(ex.getErrorCode(), ex.getMessage(), null);
         } catch (Exception ex) {
-            Log.e(TAG, "exchangeApdu unexpected", ex);
+            LedgerLog.e( "exchangeApdu unexpected", ex);
             result.error("60099", ex.getMessage(), null);
         }
     }

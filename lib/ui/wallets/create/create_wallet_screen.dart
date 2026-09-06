@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/data/wallet/entropy_mixer.dart';
@@ -9,6 +8,7 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_generator.dart';
 import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/create/dice_entropy_pad.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 enum _CreateStep { label, dice, word, reveal, quiz }
 
@@ -41,6 +41,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
   double _motionScore = 0;
   List<DiceRollSample> _rolls = const [];
   double _wordStrength = 0;
+
   /// Once true, the dice pad stays mounted (hidden on other steps) so Back
   /// from the word step still shows the same dice.
   bool _dicePadMounted = false;
@@ -195,7 +196,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = userFacingError(e);
         _busy = false;
       });
     }
@@ -205,7 +206,9 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
     final phrase = _mnemonic;
     if (phrase == null) return;
     if (!_wroteDown) {
-      setState(() => _error = 'Confirm that you wrote down the recovery phrase');
+      setState(
+        () => _error = 'Confirm that you wrote down the recovery phrase',
+      );
       return;
     }
     final quiz = _generator.buildQuiz(phrase: phrase, count: 3);
@@ -254,31 +257,10 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
       Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = userFacingError(e);
         _busy = false;
       });
     }
-  }
-
-  Future<void> _copyPhrase() async {
-    final phrase = _mnemonic;
-    if (phrase == null) return;
-    await Clipboard.setData(ClipboardData(text: phrase));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Copied. Clipboard is not secure — clear it after writing the phrase down.',
-        ),
-        duration: Duration(seconds: 4),
-      ),
-    );
-    Future<void>.delayed(const Duration(seconds: 60), () async {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text == phrase) {
-        await Clipboard.setData(const ClipboardData(text: ''));
-      }
-    });
   }
 
   Future<bool> _onWillPop() async {
@@ -307,12 +289,12 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
   }
 
   String get _title => switch (_step) {
-        _CreateStep.label => 'Create wallet',
-        _CreateStep.dice => 'Entropy ritual',
-        _CreateStep.word => 'Entropy ritual',
-        _CreateStep.reveal => 'Recovery phrase',
-        _CreateStep.quiz => 'Confirm backup',
-      };
+    _CreateStep.label => 'Create wallet',
+    _CreateStep.dice => 'Entropy ritual',
+    _CreateStep.word => 'Entropy ritual',
+    _CreateStep.reveal => 'Recovery phrase',
+    _CreateStep.quiz => 'Confirm backup',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -367,10 +349,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
               ),
             ],
             if (_step == _CreateStep.dice) ...[
-              Text(
-                '1 · Roll the dice',
-                style: theme.textTheme.titleMedium,
-              ),
+              Text('1 · Roll the dice', style: theme.textTheme.titleMedium),
               const SizedBox(height: 6),
               Text(
                 'Swipe across the pad like tossing dice on a table. Movement '
@@ -398,7 +377,8 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
             if (_step == _CreateStep.dice) ...[
               const SizedBox(height: 20),
               FilledButton(
-                onPressed: _motionScore >= EntropyMixer.minMotionScore &&
+                onPressed:
+                    _motionScore >= EntropyMixer.minMotionScore &&
                         _rolls.isNotEmpty
                     ? _goToWord
                     : null,
@@ -413,10 +393,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
               ),
             ],
             if (_step == _CreateStep.word) ...[
-              Text(
-                '2 · Personal word',
-                style: theme.textTheme.titleMedium,
-              ),
+              Text('2 · Personal word', style: theme.textTheme.titleMedium),
               const SizedBox(height: 6),
               Text(
                 'Type something only you would invent — nonsense, mixed languages, '
@@ -477,8 +454,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
               ],
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: _busy ||
-                        _wordStrength < EntropyMixer.minWordStrength
+                onPressed: _busy || _wordStrength < EntropyMixer.minWordStrength
                     ? null
                     : _goToReveal,
                 icon: _busy
@@ -496,9 +472,9 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
                 onPressed: _busy
                     ? null
                     : () => setState(() {
-                          _step = _CreateStep.dice;
-                          _error = null;
-                        }),
+                        _step = _CreateStep.dice;
+                        _error = null;
+                      }),
                 child: const Text('Back'),
               ),
             ],
@@ -548,11 +524,6 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
                     ),
                     label: Text(_phraseVisible ? 'Hide' : 'Show'),
                   ),
-                  TextButton.icon(
-                    onPressed: _copyPhrase,
-                    icon: const Icon(Icons.copy),
-                    label: const Text('Copy'),
-                  ),
                 ],
               ),
               CheckboxListTile(
@@ -600,9 +571,9 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
                         onSelected: _busy
                             ? null
                             : (_) => setState(() {
-                                  _answers[item.wordIndex] = choice;
-                                  _error = null;
-                                }),
+                                _answers[item.wordIndex] = choice;
+                                _error = null;
+                              }),
                       ),
                   ],
                 ),
@@ -625,20 +596,17 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
                 onPressed: _busy
                     ? null
                     : () => setState(() {
-                          _step = _CreateStep.reveal;
-                          _phraseVisible = true;
-                          _answers.clear();
-                          _error = null;
-                        }),
+                        _step = _CreateStep.reveal;
+                        _phraseVisible = true;
+                        _answers.clear();
+                        _error = null;
+                      }),
                 child: const Text('Back to phrase'),
               ),
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
+              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
             const SizedBox(height: 16),
             Text(
@@ -654,7 +622,10 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
   }
 
   static String _hexPreview(String s) {
-    return utf8.encode(s).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return utf8
+        .encode(s)
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
   }
 }
 
@@ -683,7 +654,10 @@ class _StepHeader extends StatelessWidget {
                     : Theme.of(context).colorScheme.onSurfaceVariant,
                 child: Text(
                   '${i + 1}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
@@ -723,8 +697,9 @@ class _WordGrid extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.6),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.6,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(

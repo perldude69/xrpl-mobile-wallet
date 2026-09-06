@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XRPL Mobile Wallet — Code &amp; Device Audit (Findings Only)</title>
+  <style>
+    :root {
+      --bg: #0b1216;
+      --bg-elev: #121c22;
+      --panel: #162229;
+      --teal: #00a3bf;
+      --teal-dim: #007a90;
+      --text: #e8f1f4;
+      --muted: #8aa0aa;
+      --warn: #f0b429;
+      --danger: #e85d5d;
+      --critical: #ff6b8a;
+      --ok: #3ecf8e;
+      --low: #6cb6ff;
+      --info: #9aa8b3;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 14px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 163, 191, 0.16), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--teal); }
+    a:hover { color: #4fd0e4; }
+    .wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+    header.hero h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.7rem, 4vw, 2.35rem);
+      letter-spacing: -0.03em;
+    }
+    header.hero .meta { color: var(--muted); font-size: 0.95rem; margin: 0.4rem 0 1.2rem; }
+    header.hero .meta span { margin-right: 1.25rem; }
+    .lede { max-width: 48rem; color: var(--muted); font-size: 1.05rem; margin: 0; }
+    section {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.45rem 1.5rem 1.65rem;
+      margin-top: 1.15rem;
+    }
+    h2 { margin: 0 0 0.85rem; font-size: 1.28rem; letter-spacing: -0.02em; }
+    h3 { margin: 1.4rem 0 0.45rem; font-size: 1.08rem; }
+    h3 .id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--teal);
+      margin-right: 0.35rem;
+    }
+    p { margin: 0.55rem 0; }
+    li { margin: 0.28rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0.8rem 0 0.2rem; }
+    th, td { text-align: left; padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 0.18rem 0.5rem; border-radius: 999px; vertical-align: middle;
+    }
+    .badge.high { background: rgba(232, 93, 93, 0.18); color: var(--danger); }
+    .badge.low { background: rgba(108, 182, 255, 0.16); color: var(--low); }
+    .badge.info { background: rgba(154, 168, 179, 0.16); color: var(--info); }
+    .badge.resolved { background: rgba(62, 207, 142, 0.16); color: var(--ok); }
+    .badge.pass { background: rgba(62, 207, 142, 0.16); color: var(--ok); }
+    .finding-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.55rem 0.8rem; }
+    .kicker {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin: 0 0 0.35rem;
+    }
+    pre {
+      background: #0a1014; border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.82rem;
+      line-height: 1.45; color: #d5e6ec;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; }
+    p code, li code, td code { background: rgba(255,255,255,0.06); padding: 0.08rem 0.32rem; border-radius: 4px; }
+    .note { border-left: 3px solid var(--teal); padding: 0.15rem 0 0.15rem 0.9rem; color: var(--muted); }
+    hr { border: 0; border-top: 1px solid var(--border); margin: 1.4rem 0; }
+    footer { color: var(--muted); font-size: 0.85rem; margin-top: 1.5rem; }
+    figure.evidence {
+      margin: 1rem 0 0.4rem; background: #0a1014; border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.6rem; max-width: 22rem;
+    }
+    figure.evidence img { display: block; width: 100%; height: auto; border-radius: 8px; background: #000; }
+    figure.evidence figcaption { color: var(--muted); font-size: 0.82rem; margin-top: 0.45rem; }
+    @media print {
+      body { background: #fff; color: #111; }
+      section { background: #fff; border-color: #ddd; }
+      a { color: #0645ad; }
+      pre { background: #f6f8fa; color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">Code &amp; Device Audit · Findings Only</p>
+      <h1>XRPL Mobile Wallet — Code &amp; Device Audit</h1>
+      <p class="meta">
+        <span>05 September 2026</span>
+        <span>Auditor: Omen Alpha (independent)</span>
+        <span>Package <code>info.richlist.wallet</code> · versionName 1.0.1 (versionCode 2)</span>
+      </p>
+      <p class="lede">
+        A fresh, independent pass over the source tree and the installed release
+        APK on the Pixel 8 Pro. This document reports <strong>only the findings
+        of this pass</strong>. Findings from earlier rounds (XRW-01 … XRW-23)
+        live in the documents where they were found:
+        <a href="2026-09-03-security-audit-report.html">2026-09-03</a>,
+        <a href="2026-09-05-owasp-mobile-audit-report.html">2026-09-05 OWASP</a>,
+        <a href="2026-09-05-reaudit-release-apk.html">2026-09-05 re-audit</a>.
+        Finding IDs continue the XRW space.
+      </p>
+    </header>
+
+    <section id="abstract">
+      <h2>Abstract</h2>
+      <p>
+        <span class="badge pass">0 High</span>
+        <span class="badge pass">0 Medium</span>
+        <span class="badge low">1 Low</span>
+        <span class="badge info">1 Informational</span>
+      </p>
+      <p>
+        Two new findings, neither exploitable as-is: the recovery phrase can be
+        copied to the system clipboard (<span class="id">XRW-24</span>, Low),
+        and raw exception strings are passed through to user-visible error text
+        (<span class="id">XRW-25</span>, Informational). Areas verified clean
+        this pass are listed in § Verification — no further findings were
+        opened.
+      </p>
+    </section>
+
+    <section id="method">
+      <h2>Methodology</h2>
+      <ul>
+        <li>
+          Source sweep of the full <code>lib/</code> tree with emphasis on
+          surfaces the earlier rounds covered only lightly: create/import/
+          attach UX around secrets, clipboard use, QR parsing, export/share
+          file handling, send flow guards, coffee-tip path, and raw exception
+          passthrough
+        </li>
+        <li>
+          Error-message audit of the crypto dependencies actually invoked with
+          secret-bearing input (<code>blockchain_utils</code> 7.1.0,
+          <code>xrpl_dart</code> 7.5.0) to confirm their exception texts are
+          fixed strings that never quote the secret
+        </li>
+        <li>
+          Passive device checks on the installed release APK (v2-signed, RSA-2048
+          upload keystore <code>f90f349b…bbe72bb</code>, <code>flutter build
+          apk --release --obfuscate</code> via <code>tool/build_release.sh</code>):
+          manifest (<code>aapt2</code>), FLAG_SECURE screencap of the live lock
+          screen, logcat secret scan
+        </li>
+        <li>
+          <code>flutter analyze</code> clean; <code>flutter test</code> 167/167
+        </li>
+      </ul>
+      <p class="note">
+        Device note: during this pass the device was in active personal use
+        (a wallet PIN was configured by the user), so all device checks were
+        kept passive — no data resets, no forced relaunches, no UI automation.
+        Full interactive flows (auto-lock timing, import/export cycle, PIN
+        setup) were exercised earlier the same day on the identical binary and
+        are documented in the
+        <a href="2026-09-05-reaudit-release-apk.html">re-audit report</a>.
+      </p>
+      <figure class="evidence">
+        <img src="evidence/thirdpass-2026-09-05-lock-screen-secure-black.png"
+             alt="adb screencap of the live PIN lock screen: content blacked out by FLAG_SECURE" />
+        <figcaption>
+          05 Sep 2026, 10:26: <code>adb exec-out screencap</code> of the
+          focused release MainActivity on the PIN lock screen. The Flutter
+          surface is blacked out by FLAG_SECURE (status bar only). This is the
+          user's live session — captured without interaction.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="findings">
+      <h2>Findings</h2>
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-24</span>Recovery phrase can be copied to the system clipboard</h3>
+        <span class="badge low">Low</span>
+        <span class="badge info">CWE-312 / MASVS-STORAGE-2</span>
+      </div>
+      <p>
+        <strong>Location.</strong>
+        <code>lib/ui/wallets/create/create_wallet_screen.dart</code>
+        (<code>_copyPhrase()</code>, backup step of wallet creation).
+      </p>
+      <p>
+        <strong>Description.</strong> The "copy" affordance on the 24-word
+        recovery-phrase backup step places the full phrase in the system
+        clipboard via <code>Clipboard.setData</code>. The app shows a warning
+        snackbar and, after 60 seconds, clears the clipboard — but only if the
+        clipboard still contains the exact phrase.
+      </p>
+      <p>
+        <strong>Impact.</strong> The clipboard is a system-wide channel: on
+        Android ≤ 9 any focused app can read it, and keyboard / clipboard
+        manager apps (e.g. cloud-synced keyboards) may persist or sync its
+        contents beyond the 60-second window. A leaked phrase is total loss of
+        funds for the wallet. User action is required (tapping copy), which is
+        why this is Low and not Medium.
+      </p>
+      <p>
+        <strong>Existing mitigations.</strong> Explicit "clipboard is not
+        secure" warning; conditional auto-clear after 60&nbsp;s; Android 12+
+        system toast on clipboard access; FLAG_SECURE blocks screen capture of
+        the surface itself.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Prefer transcription-only UX (the
+        phrase grid + verification quiz already exist). If copy stays: copy per
+        word or in short chunks instead of the whole phrase, shorten the
+        auto-clear to the next user action, and label the affordance as
+        discouraged. Note addresses and tx hashes are also copied elsewhere,
+        but those are public data and not part of this finding.
+      </p>
+
+      <hr class="note" />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-25</span>Raw exception text passed through to user-visible errors</h3>
+        <span class="badge info">Informational</span>
+        <span class="badge info">CWE-209 / MASVS-CODE</span>
+      </div>
+      <p>
+        <strong>Location.</strong> Several UI error paths render
+        <code>e.toString()</code> from raw library exceptions, e.g.
+        <code>lib/ui/send/send_screen.dart</code> (destination-policy /
+        submission paths), <code>lib/ui/wallets/import/import_screen.dart</code>
+        and <code>lib/ui/wallets/attach_keys/attach_keys_entry_screen.dart</code>
+        (non-<code>ArgumentError</code> catch), and
+        <code>lib/ui/settings/backup_settings.dart</code>
+        (<code>'Export failed: $e'</code>).
+      </p>
+      <p>
+        <strong>Description.</strong> Exceptions from dependency code are
+        converted into on-screen error text without mapping. An audit of the
+        crypto dependencies actually invoked with secret-bearing input found
+        their exception texts are fixed strings (<code>blockchain_utils</code>
+        throws <code>MnemonicException("Invalid mnemonic checksum.")</code>,
+        <code>"Invalid mnemonic length."</code>, etc. — never quoting the
+        phrase), so <strong>no secret leakage exists today</strong>. The risk
+        is that a future dependency update could introduce richer exception
+        messages (or an exception carrying user input) that would then surface
+        verbatim on screen — including on surfaces that may not be
+        FLAG_SECURE-protected (e.g. the send flow).
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Map exceptions to fixed, short
+        user-facing messages at the state/controller boundary and keep the raw
+        error out of widget state. A single helper
+        (<code>friendlyError(Object e)</code>) with allow-listed messages plus
+        a generic fallback ("Something went wrong; try again") would close the
+        channel for all listed sites.
+      </p>
+    </section>
+
+    <section id="verification">
+      <h2>Verification — checked, no new findings</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Checked this pass</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Secrets at rest</td>
+            <td>
+              Derived key names (<code>KeyNames</code>) in Keystore-backed
+              storage; no secret material outside secure storage; Drift DB,
+              prefs, watcher book public-data-only
+            </td>
+          </tr>
+          <tr>
+            <td>Obfuscated release build</td>
+            <td>
+              Shipped <code>libapp.so</code>: no class symbols, no structured
+              storage-key names, no DWARF sections
+            </td>
+          </tr>
+          <tr>
+            <td>Send flow</td>
+            <td>
+              Secret read at send-time and dropped immediately; reviewed-fee /
+              fee-cap / spendable / dest-tag guards intact; destination must
+              differ from self; coffee tip reuses the same reviewed send path
+            </td>
+          </tr>
+          <tr>
+            <td>QR / clipboard ingestion</td>
+            <td>
+              <code>QrAddressParser</code> returns only checksum-validated
+              classic addresses; no silent clipboard autofill anywhere
+            </td>
+          </tr>
+          <tr>
+            <td>Import / attach UX</td>
+            <td>Secret fields masked (<code>obscureText</code>), autofill hints empty, controller scrub on exit</td>
+          </tr>
+          <tr>
+            <td>Export / import list</td>
+            <td>Encrypted names+addresses only; temp file written to app cache and deleted in <code>finally</code></td>
+          </tr>
+          <tr>
+            <td>Logging</td>
+            <td>
+              No <code>print</code>/<code>debugPrint</code> outside
+              <code>kDebugMode</code> gates; release logcat scan clean
+            </td>
+          </tr>
+          <tr>
+            <td>Manifest / packaging</td>
+            <td>
+              v2-signed upload keystore; <code>allowBackup=false</code>; only
+              launcher activity exported; no cleartext; no WebView; no deep
+              links beyond launcher/USB
+            </td>
+          </tr>
+          <tr>
+            <td>Watcher</td>
+            <td>Address-only isolate; TLS-only endpoints; host-only status text</td>
+          </tr>
+          <tr>
+            <td>Tests</td>
+            <td><code>flutter analyze</code> clean · <code>flutter test</code> 167/167</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        Known, previously accepted items (XRW-02 in-memory PIN throttle, XRW-19
+        PIN-as-app-lock) are documented in the earlier reports and are not
+        restated here.
+      </p>
+    </section>
+
+    <footer>
+      XRPL Mobile Wallet · code &amp; device audit (findings only) ·
+      05 September 2026 ·
+      prior rounds:
+      <a href="2026-09-03-security-audit-report.html">2026-09-03</a> ·
+      <a href="2026-09-05-owasp-mobile-audit-report.html">2026-09-05 OWASP</a> ·
+      <a href="2026-09-05-reaudit-release-apk.html">2026-09-05 re-audit</a>
+    </footer>
+  </div>
+</body>
+</html>

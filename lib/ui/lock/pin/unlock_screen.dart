@@ -151,10 +151,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     if (!mounted) return;
     if (!ok) {
       setState(() {
-        // Soft fail if user cancelled auto-prompt — don't scare them.
-        if (_error == null && _busy) {
-          _error = null;
-        }
+        _error = 'Biometric authentication was cancelled or unavailable.';
         _busy = false;
       });
     }

@@ -7,6 +7,7 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
 import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/import/qr_scan_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 enum _ImportTab { mnemonic, familySeed, watchAddress }
 
@@ -96,9 +97,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on ArgumentError catch (e) {
-      setState(() => _error = e.message?.toString() ?? e.toString());
+      setState(
+        () => _error = userFacingError(
+          e,
+          fallback: 'The imported value is invalid.',
+        ),
+      );
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = userFacingError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -135,9 +141,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   Future<void> _scanQr() async {
-    final address = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const QrScanScreen()),
-    );
+    final address = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const QrScanScreen()));
     if (address == null || !mounted) return;
     setState(() {
       _secretController.text = address;
@@ -210,12 +216,12 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                           setState(() => _obscureSecret = !_obscureSecret),
                     )
                   : (_tab == _ImportTab.watchAddress && _cameraSupported
-                      ? IconButton(
-                          tooltip: 'Scan QR code',
-                          icon: const Icon(Icons.qr_code_scanner),
-                          onPressed: _busy ? null : _scanQr,
-                        )
-                      : null),
+                        ? IconButton(
+                            tooltip: 'Scan QR code',
+                            icon: const Icon(Icons.qr_code_scanner),
+                            onPressed: _busy ? null : _scanQr,
+                          )
+                        : null),
             ),
             obscureText: _isSecretField && _obscureSecret,
             minLines: _tab == _ImportTab.mnemonic ? 2 : 1,

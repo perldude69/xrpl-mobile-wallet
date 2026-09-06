@@ -10,6 +10,7 @@ import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 /// Adds the official RLUSD trust line for a signing or Ledger wallet.
 class AddRlusdButton extends ConsumerStatefulWidget {
@@ -99,7 +100,9 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
         await ref
             .read(walletListControllerProvider.notifier)
             .refreshBalances(walletIds: [account.id]);
-        await ref.read(activityControllerProvider.notifier).refreshFromNetwork();
+        await ref
+            .read(activityControllerProvider.notifier)
+            .refreshFromNetwork();
       }
 
       if (!mounted) return;
@@ -121,7 +124,7 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
           content: Text(
             widget.account.useLedger
                 ? LedgerXrpDevice.userFacingError(e)
-                : e.toString(),
+                : userFacingError(e),
           ),
         ),
       );

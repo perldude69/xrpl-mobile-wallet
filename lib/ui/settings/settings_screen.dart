@@ -66,7 +66,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Exit app?'),
-        content: const Text('Close XRPL Mobile Wallet completely.'),
+         content: const Text('Close Zerp Wallet completely.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -295,7 +295,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Text('About', style: sectionStyle),
         ),
         ListTile(
-          title: const Text('XRPL Mobile Wallet'),
+           title: const Text('Zerp Wallet'),
           subtitle: const Text(
             'Android wallet manager for the XRP Ledger\n'
             'Version 1.0.1 · Create or import BIP39 wallets',
@@ -315,7 +315,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ListTile(
           leading: const Icon(Icons.power_settings_new),
           title: const Text('Exit app'),
-          subtitle: const Text('Close XRPL Mobile Wallet completely'),
+           subtitle: const Text('Close Zerp Wallet completely'),
           enabled: !_busy,
           onTap: _busy ? null : _confirmExitApp,
         ),

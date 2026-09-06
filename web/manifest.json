@@ -1,11 +1,11 @@
 {
-    "name": "xrpl_mobile_wallet",
-    "short_name": "xrpl_mobile_wallet",
+    "name": "Zerp Wallet",
+    "short_name": "Zerp Wallet",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A local-first XRP Ledger wallet.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

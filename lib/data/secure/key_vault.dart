@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:xrpl_mobile_wallet/data/secure/key_names.dart';
 import 'package:xrpl_mobile_wallet/data/secure/secure_storage.dart';
 
 class KeyVault {
@@ -7,7 +8,7 @@ class KeyVault {
 
   final FlutterSecureStorage _storage;
 
-  String _key(String walletId) => 'wallet_secret_$walletId';
+  String _key(String walletId) => KeyNames.walletSecret(walletId);
 
   Future<void> saveSecret(String walletId, String secret) async {
     await _storage.write(key: _key(walletId), value: secret);

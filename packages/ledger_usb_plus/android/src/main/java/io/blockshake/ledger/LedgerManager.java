@@ -6,7 +6,6 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,7 +26,7 @@ import java.util.Random;
  */
 public class LedgerManager {
 
-    private static final String TAG = "LedgerUSB";
+
 
     /** Ledger vendor id 0x2c97. */
     public static final int LEDGER_VENDOR_ID = 0x2c97;
@@ -60,7 +59,7 @@ public class LedgerManager {
             synchronized (LedgerManager.class) {
                 if (instance == null) {
                     instance = new LedgerManager(usbManager);
-                    Log.i(TAG, "LedgerManager singleton created");
+                    LedgerLog.i( "LedgerManager singleton created");
                 }
             }
         }
@@ -93,7 +92,7 @@ public class LedgerManager {
         }
         for (UsbDevice d : list.values()) {
             if (d.getVendorId() == LEDGER_VENDOR_ID) {
-                Log.w(TAG, "findDevice: key miss for " + identifier
+                LedgerLog.w( "findDevice: key miss for " + identifier
                         + ", falling back to " + d.getDeviceName());
                 return d;
             }
@@ -140,7 +139,7 @@ public class LedgerManager {
                             + "and use a data-capable OTG cable.");
         }
 
-        Log.i(TAG, "open: name=" + target.getDeviceName()
+        LedgerLog.i( "open: name=" + target.getDeviceName()
                 + " vid=0x" + Integer.toHexString(target.getVendorId())
                 + " pid=0x" + Integer.toHexString(target.getProductId())
                 + " ifaces=" + target.getInterfaceCount()
@@ -170,7 +169,7 @@ public class LedgerManager {
                             + describeInterfaces(target));
         }
 
-        Log.i(TAG, "open: claiming iface=" + pick.usbInterface.getId()
+        LedgerLog.i( "open: claiming iface=" + pick.usbInterface.getId()
                 + " class=" + pick.usbInterface.getInterfaceClass()
                 + " inEp=" + pick.in.getEndpointNumber()
                 + " outEp=" + pick.out.getEndpointNumber()
@@ -194,7 +193,7 @@ public class LedgerManager {
         this.usbEndpointReadIn = pick.in;
         this.usbEndpointWriteOut = pick.out;
 
-        Log.i(TAG, "open: success connected=" + (connection != null)
+        LedgerLog.i( "open: success connected=" + (connection != null)
                 + " thread=" + Thread.currentThread().getName());
     }
 
@@ -213,7 +212,7 @@ public class LedgerManager {
     public void close() {
         synchronized (lock) {
             closeQuietlyLocked();
-            Log.i(TAG, "close: session cleared");
+            LedgerLog.i( "close: session cleared");
         }
     }
 
@@ -275,23 +274,23 @@ public class LedgerManager {
             throws LedgerException {
         synchronized (lock) {
             if (connection == null) {
-                Log.w(TAG, "exchangeApdu: not connected, re-opening…");
+                LedgerLog.w( "exchangeApdu: not connected, re-opening…");
                 openLocked(identifier == null ? "auto" : identifier);
             }
 
             int channel = new Random().nextInt(0x10000);
             List<byte[]> blocks = hidPack(apdu, channel, HID_PACKET_SIZE);
-            Log.i(TAG, "exchangeApdu: apduLen=" + apdu.length
+            LedgerLog.i( "exchangeApdu: apduLen=" + apdu.length
                     + " blocks=" + blocks.size()
                     + " channel=0x" + Integer.toHexString(channel)
                     + " timeout=" + timeoutMs);
 
             for (int i = 0; i < blocks.size(); i++) {
                 int n = transferOutLocked(blocks.get(i), timeoutMs);
-                Log.i(TAG, "exchangeApdu: transferOut block " + i + " wrote=" + n);
+                LedgerLog.i( "exchangeApdu: transferOut block " + i + " wrote=" + n);
                 if (n < 0) {
                     // Session may have died; one reopen + retry once.
-                    Log.w(TAG, "exchangeApdu: write failed, re-open and retry once");
+                    LedgerLog.w( "exchangeApdu: write failed, re-open and retry once");
                     openLocked(identifier == null ? "auto" : identifier);
                     n = transferOutLocked(blocks.get(i), timeoutMs);
                     if (n < 0) {
@@ -309,7 +308,7 @@ public class LedgerManager {
                 byte[] chunk = transferInLocked(HID_PACKET_SIZE, timeoutMs);
                 if (chunk == null || chunk.length == 0) {
                     emptyReads++;
-                    Log.w(TAG, "exchangeApdu: empty read " + emptyReads + "/" + maxEmpty);
+                    LedgerLog.w( "exchangeApdu: empty read " + emptyReads + "/" + maxEmpty);
                     if (emptyReads >= maxEmpty) {
                         throw new LedgerException(
                                 0x60007,
@@ -319,7 +318,7 @@ public class LedgerManager {
                     continue;
                 }
                 emptyReads = 0;
-                Log.i(TAG, "exchangeApdu: transferIn " + chunk.length + "b");
+                LedgerLog.i( "exchangeApdu: transferIn " + chunk.length + "b");
                 try {
                     acc = hidReduce(acc, channel, chunk);
                 } catch (IllegalArgumentException e) {
@@ -334,7 +333,7 @@ public class LedgerManager {
             if (result == null) {
                 result = new byte[0];
             }
-            Log.i(TAG, "exchangeApdu: response " + result.length + "b");
+            LedgerLog.i( "exchangeApdu: response " + result.length + "b");
             return result;
         }
     }
@@ -357,7 +356,7 @@ public class LedgerManager {
             }
             return Arrays.copyOfRange(buffer, 0, length);
         } catch (Exception ex) {
-            Log.e(TAG, "transferIn failed", ex);
+            LedgerLog.e( "transferIn failed", ex);
             // Drop dead session so next call re-opens.
             closeQuietlyLocked();
             throw new LedgerException(0x60006, "Error reading USB endpoint: " + ex.getMessage());
@@ -369,7 +368,7 @@ public class LedgerManager {
             return connection.bulkTransfer(
                     usbEndpointWriteOut, data, data.length, timeout);
         } catch (Exception ex) {
-            Log.e(TAG, "transferOut failed", ex);
+            LedgerLog.e( "transferOut failed", ex);
             closeQuietlyLocked();
             throw new LedgerException(0x60006, "Error writing USB endpoint: " + ex.getMessage());
         }

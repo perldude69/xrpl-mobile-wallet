@@ -35,4 +35,9 @@ android {
     defaultConfig {
         minSdkVersion 24
     }
+
+    // LedgerLog gates on BuildConfig.DEBUG so release logcat is silent.
+    buildFeatures {
+        buildConfig true
+    }
 }

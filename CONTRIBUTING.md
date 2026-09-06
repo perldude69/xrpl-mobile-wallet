@@ -1,4 +1,4 @@
-# Contributing to XRPL Mobile Wallet
+# Contributing to Zerp Wallet
 
 Thanks for helping. This is a local-first Flutter wallet: UI → Riverpod → data,
 with domain kept pure. The folder layout is the security story, not fashion.

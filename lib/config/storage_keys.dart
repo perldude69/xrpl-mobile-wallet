@@ -1,14 +1,21 @@
+import 'package:xrpl_mobile_wallet/data/secure/key_names.dart';
+
 /// Prefs and secure-storage *names*. Values are never secrets in this file.
 ///
-/// Do not rename these strings without a migration — existing installs bind
-/// PIN hashes and network prefs to them.
+/// Sensitive secure-storage names (PIN verifiers, wallet secrets) are derived
+/// at runtime by [KeyNames] so the release snapshot carries no structured
+/// literals (XRW-23). Non-sensitive SharedPreferences keys stay as plain
+/// constants (they hold public data only).
+///
+/// Changing a sensitive name makes existing entries unreachable — re-import
+/// or wipe instead of renaming casually.
 class StorageKeys {
-  static const pinHash = 'app_pin_hash';
-  static const pinSalt = 'app_pin_salt';
+  static String get pinHash => KeyNames.pinHash;
+  static String get pinSalt => KeyNames.pinSalt;
 
   /// Optional second PIN: unlock screen opens Zerpland instead of the wallet.
-  static const gamePinHash = 'game_pin_hash';
-  static const gamePinSalt = 'game_pin_salt';
+  static String get gamePinHash => KeyNames.gamePinHash;
+  static String get gamePinSalt => KeyNames.gamePinSalt;
 
   static const activeNetwork = 'active_network';
   static const watcherEnabled = 'watcher_enabled';

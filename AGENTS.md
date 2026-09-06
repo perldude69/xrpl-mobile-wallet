@@ -57,7 +57,18 @@ flutter pub get
 flutter analyze
 flutter test
 flutter run
-flutter build apk --release   # → build/app/outputs/flutter-apk/app-release.apk
+```
+
+Release APKs must go through `tool/build_release.sh` — it adds
+`--obfuscate --split-debug-info=build/symbols/android` (Dart AOT
+obfuscation, XRW-23; the flutter tool otherwise defaults to un-obfuscated).
+Symbol maps in `build/symbols/` are needed to symbolicate release stack
+traces; never commit or distribute them. Plain
+`flutter build apk --release` still works but produces an un-obfuscated
+snapshot.
+
+```bash
+tool/build_release.sh        # → build/app/outputs/flutter-apk/app-release.apk (obfuscated)
 ```
 
 Regenerate Drift after schema edits:

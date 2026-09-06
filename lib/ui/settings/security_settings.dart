@@ -4,6 +4,7 @@ import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 /// PIN, game PIN, and biometrics.
 class SecuritySettings extends ConsumerStatefulWidget {
@@ -89,10 +90,9 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
 
     setState(() => _busy = true);
     try {
-      final ok = await ref.read(lockControllerProvider.notifier).changePin(
-            currentPin: result.current,
-            newPin: result.next,
-          );
+      final ok = await ref
+          .read(lockControllerProvider.notifier)
+          .changePin(currentPin: result.current, newPin: result.next);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -101,15 +101,15 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
       );
     } on ArgumentError catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(userFacingError(e))));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to change PIN: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to change PIN: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -164,10 +164,9 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
 
     setState(() => _busy = true);
     try {
-      final ok = await ref.read(lockControllerProvider.notifier).setGamePin(
-            walletPin: result.walletPin,
-            gamePin: result.gamePin,
-          );
+      final ok = await ref
+          .read(lockControllerProvider.notifier)
+          .setGamePin(walletPin: result.walletPin, gamePin: result.gamePin);
       if (!mounted) return;
       if (ok) {
         setState(() => _hasGamePin = true);
@@ -183,15 +182,15 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
       }
     } on ArgumentError catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(userFacingError(e))));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to set game PIN: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to set game PIN: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -219,9 +218,9 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
       if (!mounted) return;
       if (ok) {
         setState(() => _hasGamePin = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Game PIN cleared')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Game PIN cleared')));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Wallet PIN is incorrect')),
@@ -229,9 +228,9 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to clear game PIN: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to clear game PIN: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -272,8 +271,8 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
           subtitle: Text(
             _biometricsAvailable
                 ? (_biometricsEnabled
-                    ? 'Fingerprint / face unlock enabled'
-                    : 'Use device biometrics after PIN is set')
+                      ? 'Fingerprint / face unlock enabled'
+                      : 'Use device biometrics after PIN is set')
                 : 'Not available on this device',
           ),
           value: _biometricsEnabled && _biometricsAvailable,

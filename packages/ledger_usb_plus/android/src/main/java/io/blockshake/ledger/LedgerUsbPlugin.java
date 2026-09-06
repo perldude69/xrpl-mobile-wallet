@@ -3,7 +3,7 @@ package io.blockshake.ledger;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.usb.UsbManager;
-import android.util.Log;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -36,7 +36,7 @@ import io.flutter.plugin.common.MethodChannel.Result;
  */
 public class LedgerUsbPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware {
 
-    private static final String TAG = "LedgerUSB";
+
 
     private MethodChannel channel;
     private Context appContext;
@@ -55,7 +55,7 @@ public class LedgerUsbPlugin implements FlutterPlugin, MethodCallHandler, Activi
         // Singleton: must not create a fresh empty manager per FlutterEngine.
         ledgerManager = LedgerManager.getInstance(usbManager);
         registry = buildRegistry(ledgerManager);
-        Log.i(TAG, "plugin attached to engine, manager connected="
+        LedgerLog.i( "plugin attached to engine, manager connected="
                 + ledgerManager.isConnected());
     }
 
@@ -101,13 +101,13 @@ public class LedgerUsbPlugin implements FlutterPlugin, MethodCallHandler, Activi
         registry = null;
         ledgerManager = null;
         appContext = null;
-        Log.i(TAG, "plugin detached from engine (USB session left open if any)");
+        LedgerLog.i( "plugin detached from engine (USB session left open if any)");
     }
 
     @Override
     public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
         activity = binding.getActivity();
-        Log.i(TAG, "plugin attached to activity " + activity.getClass().getSimpleName());
+        LedgerLog.i( "plugin attached to activity " + activity.getClass().getSimpleName());
     }
 
     @Override

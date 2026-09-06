@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Zerp Icon Options</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; background: #151515; color: #eee9dd; font: 16px system-ui, sans-serif; }
+    h1 { margin: 0 0 8px; letter-spacing: .02em; }
+    p { color: #aaa69d; margin: 0 0 28px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 28px; max-width: 900px; }
+    figure { margin: 0; }
+    .icon { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 22%; background: #2d2d2d url('../../assets/icons/app_icon_1024.png') center / cover no-repeat; box-shadow: 0 16px 32px #0008; }
+    .erp { position: absolute; color: #eee9dd; font-family: Georgia, 'Times New Roman', serif; font-weight: 700; letter-spacing: -.08em; text-shadow: 1px 2px 0 #2d2d2d, -1px -1px 0 #2d2d2d; }
+    .one .erp { right: 9%; bottom: 12%; font-size: 23%; transform: rotate(-7deg); }
+    .two .erp { left: 43%; bottom: 9%; font-size: 20%; letter-spacing: -.12em; transform: rotate(-3deg); }
+    .three .erp { right: 8%; top: 29%; font-size: 18%; line-height: .82; font-style: italic; writing-mode: vertical-rl; transform: rotate(8deg); letter-spacing: -.16em; }
+    figcaption { padding: 13px 2px 0; }
+    strong { display: block; color: #fffaf0; }
+    small { color: #9f9a90; }
+  </style>
+</head>
+<body>
+  <h1>Zerp icon directions</h1>
+  <p>All options retain the existing distressed Z artwork. Open this file in a browser at a large size to compare the small “erp” lettering.</p>
+  <main class="grid">
+    <figure><div class="icon one"><span class="erp">erp</span></div><figcaption><strong>01. Lower-right whisper</strong><small>Most restrained. The Z remains dominant and “erp” reads as a signature.</small></figcaption></figure>
+    <figure><div class="icon two"><span class="erp">erp</span></div><figcaption><strong>02. Baseline lockup</strong><small>Clearest wordmark. The letters sit along the bottom stroke without competing with the Z.</small></figcaption></figure>
+    <figure><div class="icon three"><span class="erp">erp</span></div><figcaption><strong>03. Side scar</strong><small>Most horror-inspired. The letters climb the right side like a scratched annotation.</small></figcaption></figure>
+  </main>
+</body>
+</html>

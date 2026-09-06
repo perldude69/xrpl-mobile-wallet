@@ -14,16 +14,13 @@ import 'package:xrpl_mobile_wallet/domain/validation/address_validator.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 enum _SendStep { asset, destination, amount, review, result }
 
 /// Multi-step flow to send XRP or held IOUs from a signing wallet.
 class SendScreen extends ConsumerStatefulWidget {
-  const SendScreen({
-    super.key,
-    required this.account,
-    this.presetDestination,
-  });
+  const SendScreen({super.key, required this.account, this.presetDestination});
 
   final WalletAccount account;
 
@@ -89,8 +86,9 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   }
 
   List<LedgerBalance> get _balances {
-    final list =
-        ref.read(walletListControllerProvider).balances[widget.account.id];
+    final list = ref
+        .read(walletListControllerProvider)
+        .balances[widget.account.id];
     return list ?? const <LedgerBalance>[];
   }
 
@@ -138,12 +136,12 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   }
 
   String get _stepTitle => switch (_step) {
-        _SendStep.asset => 'Select asset',
-        _SendStep.destination => 'Destination',
-        _SendStep.amount => 'Amount',
-        _SendStep.review => 'Review',
-        _SendStep.result => 'Result',
-      };
+    _SendStep.asset => 'Select asset',
+    _SendStep.destination => 'Destination',
+    _SendStep.amount => 'Amount',
+    _SendStep.review => 'Review',
+    _SendStep.result => 'Result',
+  };
 
   int get _stepIndex => _SendStep.values.indexOf(_step);
 
@@ -195,8 +193,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     final int? tag;
     try {
       tag = PaymentValidators.parseDestinationTag(_tagController.text);
-    } on FormatException catch (e) {
-      setState(() => _error = e.message);
+    } on FormatException {
+      setState(() => _error = 'Destination tag is invalid.');
       return;
     }
 
@@ -223,15 +221,16 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = userFacingError(e);
         _busy = false;
       });
     }
   }
 
   Future<DestinationAccountPolicy> _loadDestinationPolicy(String dest) async {
-    final policy =
-        await ref.read(xrplRpcClientProvider).fetchDestinationPolicy(dest);
+    final policy = await ref
+        .read(xrplRpcClientProvider)
+        .fetchDestinationPolicy(dest);
     if (mounted) setState(() => _destPolicy = policy);
     return policy;
   }
@@ -255,7 +254,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         setState(() => _error = policyError);
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = userFacingError(e));
     }
   }
 
@@ -285,10 +284,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       int? tag;
       try {
         tag = PaymentValidators.parseDestinationTag(_tagController.text);
-      } on FormatException catch (e) {
+      } on FormatException {
         if (!mounted) return;
         setState(() {
-          _error = e.message;
+          _error = 'Destination tag is invalid.';
           _busy = false;
         });
         return;
@@ -352,7 +351,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = userFacingError(e);
         _busy = false;
       });
     }
@@ -456,7 +455,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       setState(() {
         _error = widget.account.useLedger
             ? LedgerXrpDevice.userFacingError(e)
-            : e.toString();
+            : userFacingError(e);
         _busy = false;
       });
     } finally {
@@ -473,8 +472,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     required XRPProvider rpc,
   }) async {
     if (!mounted) throw StateError('Widget disposed');
-    final pathHint =
-        "m/44'/144'/${account.ledgerAccountIndex}'/0/0";
+    final pathHint = "m/44'/144'/${account.ledgerAccountIndex}'/0/0";
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -573,8 +571,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                 'wallet prefers ${preferred.label}.',
               ),
               leading: const Icon(Icons.warning_amber_rounded),
-              backgroundColor:
-                  Theme.of(context).colorScheme.errorContainer,
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
               actions: [
                 TextButton(
                   onPressed: _busy
@@ -595,10 +592,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  _stepTitle,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text(_stepTitle, style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
                   'Network: ${networkState.network.label}'
@@ -661,7 +655,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
           child: Text('No cached balances — showing XRP. Refresh if needed.'),
         ),
       ...items.map((b) {
-        final selected = _selected != null &&
+        final selected =
+            _selected != null &&
             _selected!.currency == b.currency &&
             _selected!.issuer == b.issuer;
         final title = CurrencyDisplay.title(b.currency, issuer: b.issuer);
@@ -719,9 +714,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         autocorrect: false,
         enableSuggestions: false,
         keyboardType: TextInputType.text,
-        inputFormatters: [
-          FilteringTextInputFormatter.deny(RegExp(r'\s')),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
         enabled: !_busy,
         textInputAction: TextInputAction.next,
       ),
@@ -777,9 +770,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         ),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         enabled: !_busy,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       ),
     ];
   }
@@ -845,10 +836,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         SelectableText(
           value,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontFamily: value.startsWith('r') || value.length > 40
-                    ? 'monospace'
-                    : null,
-              ),
+            fontFamily: value.startsWith('r') || value.length > 40
+                ? 'monospace'
+                : null,
+          ),
         ),
       ],
     );
@@ -881,19 +872,16 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       _reviewRow('Hash', r.hash),
       if (r.feeDrops != null) ...[
         const SizedBox(height: 8),
-        _reviewRow(
-          'Fee',
-          '${XrpAmount.dropsToXrp(r.feeDrops!)} XRP',
-        ),
+        _reviewRow('Fee', '${XrpAmount.dropsToXrp(r.feeDrops!)} XRP'),
       ],
       const SizedBox(height: 16),
       OutlinedButton.icon(
         onPressed: () async {
           await Clipboard.setData(ClipboardData(text: r.hash));
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Hash copied')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Hash copied')));
           }
         },
         icon: const Icon(Icons.copy),

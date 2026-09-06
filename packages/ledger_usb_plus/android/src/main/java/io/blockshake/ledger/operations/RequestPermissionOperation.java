@@ -10,8 +10,7 @@ import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
-
+import io.blockshake.ledger.LedgerLog;
 import io.blockshake.ledger.LedgerManager;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -25,7 +24,6 @@ import io.flutter.plugin.common.MethodChannel;
  */
 public class RequestPermissionOperation extends UsbMethodCallOperation {
 
-    private static final String TAG = "LedgerUSB";
     static final String ACTION_USB_PERMISSION = "io.blockshake.ledger.USB_PERMISSION";
 
     private final LedgerManager manager;
@@ -43,13 +41,13 @@ public class RequestPermissionOperation extends UsbMethodCallOperation {
             device = manager.findFirstLedger();
         }
         if (device == null) {
-            Log.w(TAG, "requestPermission: no Ledger in device list");
+            LedgerLog.w( "requestPermission: no Ledger in device list");
             result.success(false);
             return;
         }
 
         if (usbManager.hasPermission(device)) {
-            Log.i(TAG, "requestPermission: already granted for " + device.getDeviceName());
+            LedgerLog.i( "requestPermission: already granted for " + device.getDeviceName());
             result.success(true);
             return;
         }
@@ -86,10 +84,10 @@ public class RequestPermissionOperation extends UsbMethodCallOperation {
                         }
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "hasPermission check failed", e);
+                    LedgerLog.w( "hasPermission check failed", e);
                 }
                 final boolean granted = grantedExtra || hasPerm;
-                Log.i(TAG, "requestPermission result: extra=" + grantedExtra
+                LedgerLog.i( "requestPermission result: extra=" + grantedExtra
                         + " hasPermission=" + hasPerm + " → " + granted);
                 main.post(() -> result.success(granted));
             }
@@ -103,7 +101,7 @@ public class RequestPermissionOperation extends UsbMethodCallOperation {
             context.registerReceiver(receiver, filter);
         }
 
-        Log.i(TAG, "requestPermission: dialog for " + device.getDeviceName()
+        LedgerLog.i( "requestPermission: dialog for " + device.getDeviceName()
                 + " ctx=" + context.getClass().getSimpleName());
         usbManager.requestPermission(device, getPendingIntent(context));
 
@@ -118,7 +116,7 @@ public class RequestPermissionOperation extends UsbMethodCallOperation {
             } catch (Exception ignored) {
             }
             boolean hasPerm = usbManager.hasPermission(target);
-            Log.w(TAG, "requestPermission: timeout, hasPermission=" + hasPerm);
+            LedgerLog.w( "requestPermission: timeout, hasPermission=" + hasPerm);
             result.success(hasPerm);
         }, 60_000);
     }

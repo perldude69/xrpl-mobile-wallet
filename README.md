@@ -1,4 +1,4 @@
-# XRPL Mobile Wallet
+# Zerp Wallet
 
 Android-first, local-first wallet for the XRP Ledger. Secrets stay on the
 device (Android Keystore). The background watcher process never holds keys.
@@ -33,15 +33,19 @@ flutter pub get
 flutter analyze
 flutter test
 flutter run
-flutter build apk --release
+tool/build_release.sh
 ```
 
 APK path: `build/app/outputs/flutter-apk/app-release.apk`
 
+Release builds are obfuscated (`--obfuscate --split-debug-info` via
+`tool/build_release.sh`). Obfuscated symbol maps land in `build/symbols/` —
+they are needed to symbolicate release stack traces; keep them private.
+
 Play Store bundle:
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release --obfuscate --split-debug-info=build/symbols/android
 ```
 
 AAB path: `build/app/outputs/bundle/release/app-release.aab`

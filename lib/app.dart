@@ -16,7 +16,7 @@ class XrplWalletApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(
       child: MaterialApp(
-        title: 'XRPL Mobile Wallet',
+        title: 'Zerp Wallet',
         theme: buildAppTheme(),
         home: const _AppGate(),
         debugShowCheckedModeBanner: false,

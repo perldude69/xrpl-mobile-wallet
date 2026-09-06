@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XRPL Mobile Wallet Build and Device Audit</title>
+<style>body{font:16px system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#17202a}h1{color:#075b70}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd5da;padding:.55rem;text-align:left}th{background:#e8f2f5}.pass{color:#08752d;font-weight:700}.note{color:#875c00;font-weight:700}code{background:#eef1f3;padding:.1rem .25rem}</style>
+</head>
+<body>
+<h1>Build and Device Audit</h1>
+<p><strong>Date:</strong> 2026-09-05<br><strong>Scope:</strong> current working tree, obfuscated release APK, and attached Android device <code>38181FDJG00F43</code> (Pixel 8 Pro / husky).</p>
+<h2>Verdict</h2>
+<p class="pass">PASS for the verified build and launch checks, with two residual code notes and limited authenticated-flow coverage.</p>
+<h2>Build evidence</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td>Dependencies and analyzer</td><td class="pass">Pass: <code>flutter pub get</code> and <code>flutter analyze</code>.</td></tr>
+<tr><td>Tests</td><td class="pass">Pass: 167 tests.</td></tr>
+<tr><td>Release compilation</td><td class="pass">Pass: <code>tool/build_release.sh</code> completed; APK 81.3 MB.</td></tr>
+<tr><td>Obfuscation</td><td class="pass">Build used <code>--obfuscate --split-debug-info=build/symbols/android</code>. Symbol maps exist locally and are not part of the APK. Native section inspection found no debug sections.</td></tr>
+<tr><td>Artifact hash</td><td><code>490e2069f17ad128eea7f4183c184cd5e76bb47cb709ea53e1f29f25870f8dbd</code></td></tr>
+<tr><td>Signing</td><td class="pass">APK v2 verified; RSA-2048 upload certificate, SHA-256 <code>f90f349b4412ae1c164c53b6eba9b6095ff6a12bd3051a540b05fcfbbfbe72bb</code>.</td></tr>
+<tr><td>Package</td><td class="pass"><code>info.richlist.wallet</code>, version 1.0.1, code 2, target SDK 36.</td></tr></table>
+<h2>Static security review</h2>
+<ul><li class="pass">Source checks confirm <code>allowBackup=false</code>, non-launcher components explicitly exported false, FLAG_SECURE handling, and obscured-touch filtering in <code>MainActivity.kt</code>.</li><li class="pass">Release native string scan did not expose class names or structured storage key names. Expected validation text such as “mnemonic” remains present and is not secret material.</li><li class="pass">The repository’s secure-storage, watcher boundary, derivation, payment guard, and PIN tests passed.</li></ul>
+<h2>Device audit</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td>Installation</td><td class="pass"><code>adb install -r</code> succeeded.</td></tr>
+<tr><td>Launch/process</td><td class="pass">Application process observed with <code>pidof info.richlist.wallet</code>.</td></tr>
+<tr><td>Permission surface</td><td class="pass">Target SDK 36; notification and camera permissions were not silently granted.</td></tr>
+<tr><td>Logcat scan</td><td class="pass">Sampled app session contained no mnemonic, seed, private-key, PIN, or secret values. Matches were Android framework permission/window text only.</td></tr>
+<tr><td>Interactive flow</td><td class="pass">Re-run from the create-PIN screen: disposable PIN setup completed, returning to the empty wallet list. No wallet or recovery phrase was created.</td></tr>
+<tr><td>Screen capture</td><td class="pass">The create-PIN screen capture was black for app content; only Android system bars remained visible. Evidence: <code>evidence/2026-09-05-create-pin-secure-black.png</code>. Post-setup wallet list rendered normally.</td></tr></table>
+<h2>Findings and residual risk</h2>
+<ol><li><strong>Low, XRW-24:</strong> the create-wallet flow offers clipboard copying of the recovery phrase (<code>lib/ui/wallets/create/create_wallet_screen.dart:263-271</code>). The UI warns the user and clears clipboard data when leaving, but clipboard exposure remains possible.</li><li><strong>Informational, XRW-25:</strong> several UI error paths display raw exception text (<code>lib/ui/send/send_screen.dart:226</code>, <code>lib/ui/wallets/import/import_screen.dart:99-101</code>). This can expose implementation/provider details to users and should be mapped to safe messages.</li><li><strong>Build note:</strong> Gradle reported upcoming support deprecation for Gradle 8.14, AGP 8.11.1, and Kotlin 2.2.20. This did not affect this build.</li></ol>
+<h2>Limitations</h2><p>This is an audit of the source tree and the newly built/installed artifact. Ledger hardware, live payment signing, biometric unlock, background notifications, and recovery-phrase capture were not exercised. The create-PIN protected surface was dynamically verified in the follow-up run.</p>
+</body></html>

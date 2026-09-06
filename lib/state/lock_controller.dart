@@ -99,8 +99,9 @@ class LockController extends StateNotifier<LockPhase> {
     if (!await isBiometricsEnabled()) return false;
     try {
       final ok = await _auth.authenticate(
-        localizedReason: 'Unlock XRPL Mobile Wallet',
+        localizedReason: 'Unlock Zerp Wallet',
         biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
       if (ok) state = LockPhase.unlocked;
       return ok;

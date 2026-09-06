@@ -6,12 +6,9 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/mnemonic_grid.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/import/bip39_word_field.dart';
+import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
-enum AttachKeysMode {
-  pasteMnemonic,
-  gridMnemonic,
-  familySeed,
-}
+enum AttachKeysMode { pasteMnemonic, gridMnemonic, familySeed }
 
 /// Entry UI for attaching keys to a watch-only wallet.
 class AttachKeysEntryScreen extends ConsumerStatefulWidget {
@@ -135,9 +132,14 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on ArgumentError catch (e) {
-      setState(() => _error = e.message?.toString() ?? e.toString());
+      setState(
+        () => _error = userFacingError(
+          e,
+          fallback: 'The key material is invalid.',
+        ),
+      );
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = userFacingError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -150,8 +152,7 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
         .toList();
     for (var i = 0; i < MnemonicGrid.slotCount; i++) {
       final src = startIndex + i;
-      _gridControllers[i].text =
-          src < normalized.length ? normalized[src] : '';
+      _gridControllers[i].text = src < normalized.length ? normalized[src] : '';
     }
     setState(() => _error = null);
     final nextEmpty = _gridControllers.indexWhere((c) => c.text.isEmpty);
@@ -179,16 +180,13 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            widget.label,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text(widget.label, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           SelectableText(
             widget.address,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
           const SizedBox(height: 20),
           switch (widget.mode) {
@@ -260,9 +258,7 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
         hintText: 's…',
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          icon: Icon(
-            _obscureSeed ? Icons.visibility : Icons.visibility_off,
-          ),
+          icon: Icon(_obscureSeed ? Icons.visibility : Icons.visibility_off),
           onPressed: () => setState(() => _obscureSeed = !_obscureSeed),
         ),
       ),
