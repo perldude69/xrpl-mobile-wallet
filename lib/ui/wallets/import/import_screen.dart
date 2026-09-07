@@ -8,6 +8,8 @@ import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/import/qr_scan_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
+import 'package:xrpl_mobile_wallet/domain/validation/mnemonic_grid.dart';
+import 'package:xrpl_mobile_wallet/ui/wallets/import/bip39_word_field.dart';
 
 enum _ImportTab { mnemonic, familySeed, watchAddress }
 
@@ -22,6 +24,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   _ImportTab _tab = _ImportTab.mnemonic;
   final _labelController = TextEditingController();
   final _secretController = TextEditingController();
+  final _mnemonicControllers = List.generate(
+    MnemonicGrid.slotCount,
+    (_) => TextEditingController(),
+  );
+  final _mnemonicFocus = List.generate(
+    MnemonicGrid.slotCount,
+    (_) => FocusNode(),
+  );
   String? _error;
   bool _busy = false;
   bool _obscureSecret = true;
@@ -41,6 +51,12 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     _clearSecretField();
     _labelController.dispose();
     _secretController.dispose();
+    for (final controller in _mnemonicControllers) {
+      controller.dispose();
+    }
+    for (final focus in _mnemonicFocus) {
+      focus.dispose();
+    }
     super.dispose();
   }
 
@@ -58,7 +74,17 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
   Future<void> _submit() async {
     final label = _labelController.text;
-    final secret = _secretController.text;
+    final String secret;
+    try {
+      secret = _tab == _ImportTab.mnemonic
+          ? MnemonicGrid.phraseFromCells(
+              _mnemonicControllers.map((c) => c.text).toList(),
+            )
+          : _secretController.text;
+    } on ArgumentError catch (e) {
+      setState(() => _error = e.message?.toString());
+      return;
+    }
     final network = ref.read(networkControllerProvider).network;
 
     setState(() {
@@ -184,6 +210,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 _tab = s.first;
                 _error = null;
                 _clearSecretField();
+                for (final controller in _mnemonicControllers) {
+                  controller.clear();
+                }
               });
             },
           ),
@@ -199,45 +228,49 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             enabled: !_busy,
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _secretController,
-            decoration: InputDecoration(
-              labelText: _secretLabel,
-              hintText: _secretHint,
-              border: const OutlineInputBorder(),
-              suffixIcon: _isSecretField
-                  ? IconButton(
-                      icon: Icon(
-                        _obscureSecret
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscureSecret = !_obscureSecret),
-                    )
-                  : (_tab == _ImportTab.watchAddress && _cameraSupported
-                        ? IconButton(
-                            tooltip: 'Scan QR code',
-                            icon: const Icon(Icons.qr_code_scanner),
-                            onPressed: _busy ? null : _scanQr,
-                          )
-                        : null),
+          if (_tab == _ImportTab.mnemonic)
+            _MnemonicImportGrid(
+              controllers: _mnemonicControllers,
+              focusNodes: _mnemonicFocus,
+              enabled: !_busy,
+              onPaste: _fillMnemonic,
+            )
+          else
+            TextField(
+              controller: _secretController,
+              decoration: InputDecoration(
+                labelText: _secretLabel,
+                hintText: _secretHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: _isSecretField
+                    ? IconButton(
+                        icon: Icon(
+                          _obscureSecret
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureSecret = !_obscureSecret),
+                      )
+                    : (_tab == _ImportTab.watchAddress && _cameraSupported
+                          ? IconButton(
+                              tooltip: 'Scan QR code',
+                              icon: const Icon(Icons.qr_code_scanner),
+                              onPressed: _busy ? null : _scanQr,
+                            )
+                          : null),
+              ),
+              obscureText: _isSecretField && _obscureSecret,
+              enableSuggestions: !_isSecretField,
+              autocorrect: false,
+              enableIMEPersonalizedLearning: false,
+              autofillHints: const <String>[],
+              keyboardType: TextInputType.text,
+              inputFormatters: _tab == _ImportTab.watchAddress
+                  ? [FilteringTextInputFormatter.deny(RegExp(r'\s'))]
+                  : null,
+              enabled: !_busy,
             ),
-            obscureText: _isSecretField && _obscureSecret,
-            minLines: _tab == _ImportTab.mnemonic ? 2 : 1,
-            maxLines: _tab == _ImportTab.mnemonic ? 4 : 1,
-            enableSuggestions: !_isSecretField,
-            autocorrect: false,
-            enableIMEPersonalizedLearning: false,
-            autofillHints: const <String>[],
-            keyboardType: _tab == _ImportTab.mnemonic
-                ? TextInputType.visiblePassword
-                : TextInputType.text,
-            inputFormatters: _tab == _ImportTab.watchAddress
-                ? [FilteringTextInputFormatter.deny(RegExp(r'\s'))]
-                : null,
-            enabled: !_busy,
-          ),
           if (_tab == _ImportTab.watchAddress && _cameraSupported) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -279,6 +312,61 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  void _fillMnemonic(List<String> words) {
+    for (var i = 0; i < _mnemonicControllers.length; i++) {
+      _mnemonicControllers[i].text = i < words.length ? words[i] : '';
+    }
+    setState(() => _error = null);
+  }
+}
+
+class _MnemonicImportGrid extends StatelessWidget {
+  const _MnemonicImportGrid({
+    required this.controllers,
+    required this.focusNodes,
+    required this.enabled,
+    required this.onPaste,
+  });
+
+  final List<TextEditingController> controllers;
+  final List<FocusNode> focusNodes;
+  final bool enabled;
+  final ValueChanged<List<String>> onPaste;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Recovery phrase', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: MnemonicGrid.slotCount,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 2.7,
+          ),
+          itemBuilder: (context, index) => Bip39WordField(
+            index: index + 1,
+            controller: controllers[index],
+            focusNode: focusNodes[index],
+            enabled: enabled,
+            onPasteMultiWord: onPaste,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Enter 12 words in fields 1–12, or fill all 24 fields. Tap a suggestion to avoid spelling errors.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

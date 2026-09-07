@@ -88,12 +88,12 @@ class WalletListController extends StateNotifier<WalletListState> {
     required XrplRpcClient ledger,
     required NetworkController network,
     required AccountWatcher watcher,
-  })  : _db = db,
-        _keyVault = keyVault,
-        _ledger = ledger,
-        _network = network,
-        _watcher = watcher,
-        super(const WalletListState()) {
+  }) : _db = db,
+       _keyVault = keyVault,
+       _ledger = ledger,
+       _network = network,
+       _watcher = watcher,
+       super(const WalletListState()) {
     reload();
   }
 
@@ -107,7 +107,10 @@ class WalletListController extends StateNotifier<WalletListState> {
     state = state.copyWith(loading: true, clearError: true);
     try {
       final rows = await _db.getAllWallets();
-      final accounts = rows.map(_toAccount).toList();
+      final accounts = rows
+          .map(_toAccount)
+          .where((a) => a.preferredNetwork == _network.state.network)
+          .toList();
       final balanceMap = <String, List<LedgerBalance>>{};
       for (final a in accounts) {
         final cached = await _db.getBalancesForWallet(a.id);
@@ -130,10 +133,7 @@ class WalletListController extends StateNotifier<WalletListState> {
       );
       await _syncWatcher(accounts);
     } catch (e) {
-      state = state.copyWith(
-        loading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(loading: false, errorMessage: e.toString());
     }
   }
 
@@ -168,9 +168,7 @@ class WalletListController extends StateNotifier<WalletListState> {
       throw ArgumentError('This wallet already has keys');
     }
     if (material.address != account.address) {
-      throw ArgumentError(
-        'This secret does not match this wallet\'s address.',
-      );
+      throw ArgumentError('This secret does not match this wallet\'s address.');
     }
 
     await _keyVault.saveSecret(walletId, material.secret);
@@ -188,10 +186,7 @@ class WalletListController extends StateNotifier<WalletListState> {
     final nextWallets = state.wallets.where((w) => w.id != id).toList();
     final nextBalances = Map<String, List<LedgerBalance>>.from(state.balances)
       ..remove(id);
-    state = state.copyWith(
-      wallets: nextWallets,
-      balances: nextBalances,
-    );
+    state = state.copyWith(wallets: nextWallets, balances: nextBalances);
     await _syncWatcher(nextWallets);
   }
 
@@ -272,7 +267,8 @@ class WalletListController extends StateNotifier<WalletListState> {
       if (!_network.state.isConnected) {
         state = state.copyWith(
           refreshing: false,
-          errorMessage: _network.state.errorMessage ?? 'Not connected to network',
+          errorMessage:
+              _network.state.errorMessage ?? 'Not connected to network',
         );
         return;
       }
@@ -312,10 +308,7 @@ class WalletListController extends StateNotifier<WalletListState> {
   }
 
   /// Throws if [address] is already saved (create / import / attach-keys).
-  static void ensureUniqueAddress(
-    List<WalletAccount> wallets,
-    String address,
-  ) {
+  static void ensureUniqueAddress(List<WalletAccount> wallets, String address) {
     if (wallets.any((w) => w.address == address)) {
       throw ArgumentError('A wallet with this address is already saved');
     }
@@ -356,11 +349,11 @@ class WalletListController extends StateNotifier<WalletListState> {
 
 final walletListControllerProvider =
     StateNotifierProvider<WalletListController, WalletListState>((ref) {
-  return WalletListController(
-    db: ref.watch(databaseProvider),
-    keyVault: ref.watch(keyVaultProvider),
-    ledger: ref.watch(xrplRpcClientProvider),
-    network: ref.watch(networkControllerProvider.notifier),
-    watcher: ref.watch(accountWatcherProvider),
-  );
-});
+      return WalletListController(
+        db: ref.watch(databaseProvider),
+        keyVault: ref.watch(keyVaultProvider),
+        ledger: ref.watch(xrplRpcClientProvider),
+        network: ref.watch(networkControllerProvider.notifier),
+        watcher: ref.watch(accountWatcherProvider),
+      );
+    });

@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.2] - 2026-09-05
+## [2.1.0] - 2026-09-07
+
+### Added
+
+- XRP/RLUSD market and limit trading with validated order-book display.
+- Ledger signing for market orders, limit orders, and offer cancellation.
+- Rich-list RPC/WSS endpoint defaults and resilient rippled response parsing.
+- Reserve checks, slippage bounds, order reconciliation, and trade history.
+- Editable limit rates with numeric amount entry.
+
+## [2.0.0] - 2026-09-05
 
 ### Added
 
@@ -21,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded the Android local-auth implementation and retained biometric
   authentication across activity transitions.
 - Added build, source, and device audit reports under `docs/audit/`.
+- Added the first V2 Trade dashboard milestone: validated open-offer visibility
+  for selected wallets, including watch-only accounts.
 
 - Wallet secrets and PIN verifiers now live under runtime-derived secure
   storage key names (`KeyNames`, SHA-256 of XOR-encoded role tags) instead of

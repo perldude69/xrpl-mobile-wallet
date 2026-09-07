@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:xrpl_mobile_wallet/data/wallet/wallet_export.dart';
 import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
-import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
@@ -29,9 +28,9 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
     final wallets = ref.read(walletListControllerProvider).wallets;
     if (wallets.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No wallets to export')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No wallets to export')));
       return;
     }
 
@@ -82,9 +81,9 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
       try {
@@ -115,9 +114,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
         extensions: <String>['json'],
         mimeTypes: <String>['application/json'],
       );
-      final file = await openFile(
-        acceptedTypeGroups: <XTypeGroup>[typeGroup],
-      );
+      final file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
       if (file == null) return;
 
       final raw = await file.readAsString();
@@ -140,7 +137,6 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
         return;
       }
 
-      final network = ref.read(networkControllerProvider).network;
       final existing = {
         for (final w in ref.read(walletListControllerProvider).wallets)
           w.address,
@@ -159,7 +155,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
           final result = importer.importWatchOnly(
             e.address,
             label: e.name,
-            network: network,
+            network: e.network,
           );
           await ref
               .read(walletListControllerProvider.notifier)
@@ -185,9 +181,9 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -210,7 +206,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
             wallets.isEmpty
                 ? 'No wallets to export'
                 : 'Password-encrypted JSON for ${wallets.length} wallet(s)\n'
-                    'Names + addresses only · file name YYYYMMDD_HHMMSS.json',
+                      'Names + addresses only · file name YYYYMMDD_HHMMSS.json',
           ),
           isThreeLine: true,
           enabled: !_busy && wallets.isNotEmpty,

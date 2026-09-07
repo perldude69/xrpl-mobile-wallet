@@ -144,9 +144,7 @@ class _PortfolioSummary extends StatelessWidget {
 
     String rateLine;
     if (rate != null && rate > 0) {
-      final age = price.updatedAt == null
-          ? ''
-          : ' · ${_age(price.updatedAt!)}';
+      final age = price.updatedAt == null ? '' : ' · ${_age(price.updatedAt!)}';
       rateLine = '${FiatFormat.formatRate(rate)}$age · tap total to toggle';
     } else {
       rateLine = 'XRP/USD rate unavailable';
@@ -174,9 +172,7 @@ class _PortfolioSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        showUsd
-                            ? FiatFormat.formatUsd(usdTotal)
-                            : totalXrp,
+                        showUsd ? FiatFormat.formatUsd(usdTotal) : totalXrp,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: onC,
@@ -273,8 +269,8 @@ class _EmptyWallets extends StatelessWidget {
               'Settings → Create wallet or Import wallet',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -307,15 +303,20 @@ class _WalletTile extends StatelessWidget {
         : (xrpBalance == null ? '—' : '$xrpBalance XRP');
     final secondary = displayFiat && usd != null && xrpBalance != null
         ? '$xrpBalance XRP'
-        : (usd != null && !displayFiat ? '≈ ${FiatFormat.formatUsd(usd)}' : null);
+        : (usd != null && !displayFiat
+              ? '≈ ${FiatFormat.formatUsd(usd)}'
+              : null);
 
     return ListTile(
+      isThreeLine: true,
+      minVerticalPadding: 8,
       leading: CircleAvatar(
         backgroundColor: color,
         child: Text(
           account.label.isNotEmpty ? account.label[0].toUpperCase() : '?',
           style: TextStyle(
-            color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+            color:
+                ThemeData.estimateBrightnessForColor(color) == Brightness.dark
                 ? Colors.white
                 : Colors.black87,
             fontWeight: FontWeight.w700,
@@ -325,20 +326,18 @@ class _WalletTile extends StatelessWidget {
       title: Text(account.label),
       subtitle: Text(_shorten(account.address)),
       trailing: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            primary,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text(primary, style: Theme.of(context).textTheme.titleSmall),
           if (secondary != null) ...[
             const SizedBox(height: 2),
             Text(
               secondary,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
           const SizedBox(height: 2),
@@ -365,18 +364,15 @@ class _KindBadge extends StatelessWidget {
     final label = account.useLedger
         ? 'Ledger'
         : account.hasLocalKeys
-            ? 'Signing'
-            : 'Watch';
+        ? 'Signing'
+        : 'Watch';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
     );
   }
 }

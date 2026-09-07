@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Trade Feature Remediation Audit (XRW-26…31)</title><style>body{font:16px system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#17202a}h1{color:#075b70}h2{color:#075b70;margin-top:1.8rem}table{border-collapse:collapse;width:100%;margin:.6rem 0}th,td{border:1px solid #ccd5da;padding:.55rem;text-align:left;vertical-align:top}th{background:#e8f2f5}.pass{color:#08752d;font-weight:700}.note{color:#875c00;font-weight:700}code{background:#eef1f3;padding:.1rem .25rem}ul{margin:.4rem 0}</style></head>
+<body>
+<h1>Trade Feature Remediation Audit</h1>
+<p><strong>Date:</strong> 2026-09-06<br>
+<strong>Scope:</strong> remediated working tree (branch <code>main</code>, base commit <code>7d3acbd</code> + uncommitted delta), a fresh obfuscated release APK built from it, and the attached device <code>38181FDJG00F43</code> (Pixel&nbsp;8&nbsp;Pro).<br>
+<strong>Follows:</strong> <a href="2026-09-06-trade-feature-code-and-device-audit.html">2026-09-06 Trade Feature Code &amp; Device Audit</a> (XRW-26 … XRW-31).</p>
+
+<h2>Verdict</h2>
+<p class="pass">PASS. All six findings (3 Low, 3 Informational) are remediated in source and covered by tests. The rebuilt APK is obfuscated, v2-signed with the upload keystore, and installed and launched on the device. Analyzer clean; 187 tests pass (was 168 — 19 added). No High or Medium findings were introduced.</p>
+
+<h2>Build and test</h2>
+<table>
+<tr><th>Check</th><th>Result</th></tr>
+<tr><td>Analyzer</td><td class="pass"><code>flutter analyze</code> — no issues.</td></tr>
+<tr><td>Automated tests</td><td class="pass"><code>flutter test</code> — 187 passed (previously 168; +14 trade helpers/golden fields, +3 endpoint default/opt-in, widget test reworked).</td></tr>
+<tr><td>Release build</td><td class="pass"><code>tool/build_release.sh</code> completed with <code>--obfuscate --split-debug-info=build/symbols/android</code>.</td></tr>
+<tr><td>APK</td><td><code>build/app/outputs/flutter-apk/app-release.apk</code><br>SHA-256: <code>b1a03e39c644dab2f2c8816293f4bfc2597717bd017fd2d27b4d50f6ffd9f126</code></td></tr>
+<tr><td>Signing</td><td class="pass">APK Signature Scheme v2 verified; upload certificate SHA-256 <code>f90f349b4412ae1c164c53b6eba9b6095ff6a12bd3051a540b05fcfbbfbe72bb</code> (unchanged).</td></tr>
+<tr><td>Shipped native library</td><td class="pass"><code>lib/arm64-v8a/libapp.so</code> sections: <code>.rodata .text .dynsym .dynstr .eh_frame .dynamic .bss</code> only — no <code>.debug_*</code>, no <code>.symtab</code>. See build note below.</td></tr>
+</table>
+
+<h2>Remediation verification</h2>
+<table>
+<tr><th>Finding</th><th>Fix and verification</th></tr>
+
+<tr><td><strong>XRW-26</strong><br>Raw exception text in Trade UI</td>
+<td class="pass">All snackbars in <code>lib/ui/trade/trade_dashboard_screen.dart</code> now render fixed text from the new top-level <code>tradeFailureMessage(Object)</code> — no <code>e.message</code> / <code>e.toString()</code> anywhere in the file (source search clean). Engine-result codes (public XRPL constants) are still shown. Test <code>test/ui/trade/trade_dashboard_helpers_test.dart</code> feeds seven exception shapes carrying a marker string and asserts the marker never appears in the output; <code>PaymentOperationException</code> surfaces only its own fixed <code>stage</code> constant.</td></tr>
+
+<tr><td><strong>XRW-27</strong><br>Maintainer host as default RPC / submit endpoint</td>
+<td class="pass"><code>EndpointPreferences.mainnetHttpCatalog</code> now leads with <code>xrplcluster.com</code>; <code>rpc.rich-list.info</code> moved to last and <strong>excluded from <code>defaultHttpIds</code></strong> — it is opt-in only, labelled "(maintainer)". The empty-selection fallbacks in <code>_builtInUrls</code> and <code>_clean</code> now fall back to the default set rather than the raw catalog, so deselecting every node cannot silently re-enable the maintainer host. <code>lib/config/network_id.dart</code> already led with the public cluster, so the two catalogs now agree. Tests: default RPC is a neutral public cluster and never includes <code>rpc.rich-list.info</code>; explicit opt-in works; empty set falls back to the default set.</td></tr>
+
+<tr><td><strong>XRW-30</strong><br>Trade offered to Ledger wallets it can't sign for</td>
+<td class="pass">Trade signing is gated on <code>WalletAccount.hasLocalKeys</code> via <code>_canSignTrades</code>. Ledger and watch-only wallets get a review-only dashboard with explicit copy ("This is a Ledger wallet … on-device signing for trades is not available yet" / "Attach local keys to create or cancel offers"); the per-offer <em>Cancel</em> and <em>Cancel all</em> controls are hidden for them, and the review path ends with a clear message instead of a failed signature.</td></tr>
+
+<tr><td><strong>XRW-28</strong><br>Raw exception text persisted to the DB</td>
+<td class="pass"><code>trade_executions.last_error</code> is now written only as fixed slugs from <code>tradeErrorCategory(Object)</code> (<code>validation</code>, <code>no-signing-key</code>, <code>network-timeout</code>, <code>stage:&lt;const&gt;</code>, <code>submit-rejected</code>, <code>build-failed</code>, <code>unknown</code>) or <code>engine:&lt;code&gt;</code> for a rejected submit. Test asserts a slug never contains the source exception's message.</td></tr>
+
+<tr><td><strong>XRW-29</strong><br>Fee and reserve missing from the review</td>
+<td class="pass">New <code>XrplRpcClient.fetchOwnerReserveIncrementDrops()</code> (from <code>server_info</code> validated ledger). <code>_createLimitOrder</code> preflights the minimum fee and the owner-reserve increment before the review dialog; <code>_OfferReviewDialog</code> now shows "Estimated network fee", "Reserve while the offer rests", and a funds-locked note, with a safe explanatory fallback if the preflight call fails. The <code>AppConfig.maxFeeDrops</code> (0.1&nbsp;XRP) sign-time cap is unchanged.</td></tr>
+
+<tr><td><strong>XRW-31</strong><br>Execution row written before PIN verification</td>
+<td class="pass"><code>upsertTradeExecution</code> now runs only after <code>promptAndVerifyWalletPin</code> returns true, with initial status <code>signing</code>. A cancelled or failed PIN prompt no longer leaves an orphan <code>awaiting_approval</code> row in <code>getActiveTradeExecutions()</code>.</td></tr>
+</table>
+
+<h2>Also fixed (non-security observations)</h2>
+<ul>
+<li><strong>Stale in-app version.</strong> Added <code>AppConfig.appVersionName = '2.0.0'</code>; the Settings → About tile interpolates it instead of the hard-coded "1.0.1".</li>
+<li><strong>Trade test coverage.</strong> Added <code>test/data/payments/offer_construction_test.dart</code> (golden <code>OfferCreate</code> / <code>OfferCancel</code> field construction, XRP↔drops on both sides) and <code>test/ui/trade/trade_dashboard_helpers_test.dart</code> (error mappers, <code>offerAmount</code> including sub-drop rejection). The private <code>_toAmount</code> was promoted to the top-level <code>offerAmount()</code> so the money-critical conversion is unit-tested.</li>
+<li><strong>Widget-test database warning.</strong> <code>test/widget_test.dart</code> now overrides <code>databaseProvider</code> with a shared in-memory <code>AppDatabase</code>; the Drift "created the database class AppDatabase multiple times" warning is gone.</li>
+</ul>
+
+<h2>Residual notes</h2>
+<ul>
+<li class="note">Ledger on-device signing for <code>OfferCreate</code> / <code>OfferCancel</code> is still not implemented — Trade is deliberately review-only for Ledger wallets until it is.</li>
+<li class="note">A successfully <code>submitted</code> trade row is still non-terminal; startup reconciliation of in-flight offers against the ledger remains future work (design doc Phase 3).</li>
+<li class="note"><code>WalletListController.reload()</code> per-network wallet filtering (no cross-network address dedupe) is unchanged and appears intentional.</li>
+<li><strong>Build note.</strong> This rebuild emitted "generated ELF library contains unobfuscated DWARF debugging information — use <code>--strip</code>". This concerns the intermediate AOT library under <code>build/</code>; the <em>shipped</em> <code>libapp.so</code> is section-clean (verified above), so obfuscation posture is unchanged. Adding <code>--strip</code> to <code>tool/build_release.sh</code> would silence it and drop DWARF from the intermediate too.</li>
+<li>Gradle/AGP/Kotlin future-deprecation warnings persist; compilation succeeded.</li>
+</ul>
+
+<h2>Device test</h2>
+<table>
+<tr><th>Check</th><th>Result</th></tr>
+<tr><td>Install</td><td class="pass"><code>adb install -r</code> of the rebuilt APK succeeded (versionName 2.0.0, code 4).</td></tr>
+<tr><td>Launch / process</td><td class="pass"><code>info.richlist.wallet</code> process observed running after launch.</td></tr>
+<tr><td>Permission surface</td><td class="pass"><code>POST_NOTIFICATIONS</code> and <code>CAMERA</code> both <code>granted=false</code>; no new declared permissions vs. the prior build.</td></tr>
+<tr><td>Logcat scan</td><td class="pass">Sampled app session: no mnemonic, seed, private-key, PIN, or secret matches.</td></tr>
+<tr><td>Screen security</td><td class="note">The device owner re-locked the phone (keyguard) during this pass, so a fresh FLAG_SECURE screencap was not retaken. The mechanism is untouched by these changes and was evidenced earlier the same day: <code>evidence/2026-09-06-v2-setup-pin-flag-secure-black.png</code>.</td></tr>
+</table>
+
+<h2>Limitations</h2>
+<p>Audit of a remediated working tree (uncommitted) and a build made from it. Live offer placement with real funds, Ledger USB signing, biometric unlock, the FGS watcher, and full create/import/backup flows were not exercised. App data on the device was cleared and the process force-stopped after the pass; the build was left installed.</p>
+
+</body></html>

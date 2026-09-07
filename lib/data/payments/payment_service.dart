@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:blockchain_utils/blockchain_utils.dart';
 import 'package:xrpl_dart/xrpl_dart.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
@@ -56,6 +58,7 @@ class PaymentSubmitResult {
     required this.engineResultMessage,
     required this.isSuccess,
     this.feeDrops,
+    this.lastLedgerSequence,
   });
 
   final String hash;
@@ -65,6 +68,19 @@ class PaymentSubmitResult {
 
   /// Fee in drops after autoFill, if known.
   final String? feeDrops;
+
+  /// `LastLedgerSequence` autoFill put on the transaction, if known.
+  ///
+  /// Recorded at submit time because it is the only thing that can later prove
+  /// a missing transaction is definitively dead rather than merely slow: past
+  /// this ledger with nothing validated, it can never be applied.
+  final int? lastLedgerSequence;
+}
+
+class PaymentOperationException implements Exception {
+  const PaymentOperationException(this.stage);
+
+  final String stage;
 }
 
 /// Pure validation helpers for send-form inputs (unit-testable).
@@ -111,7 +127,9 @@ class PaymentValidators {
     final value = int.parse(trimmed);
     // XRPL destination tags are unsigned 32-bit.
     if (value < 0 || value > 0xFFFFFFFF) {
-      throw const FormatException('Destination tag out of range (0–4294967295)');
+      throw const FormatException(
+        'Destination tag out of range (0–4294967295)',
+      );
     }
     return value;
   }
@@ -125,10 +143,7 @@ class PaymentValidators {
   }
 
   /// Returns an error if [feeDrops] is missing, invalid, or above [maxDrops].
-  static String? validateFeeDrops(
-    String? feeDrops, {
-    BigInt? maxDrops,
-  }) {
+  static String? validateFeeDrops(String? feeDrops, {BigInt? maxDrops}) {
     final max = maxDrops ?? BigInt.from(AppConfig.maxFeeDrops);
     if (feeDrops == null || feeDrops.trim().isEmpty) {
       return 'Network fee is missing; refusing to sign';
@@ -195,7 +210,8 @@ class PaymentValidators {
     }
     if (destUnfunded) {
       final reserve =
-          accountReserveDrops ?? BigInt.from(AppConfig.accountCreateReserveDrops);
+          accountReserveDrops ??
+          BigInt.from(AppConfig.accountCreateReserveDrops);
       if (send < reserve) {
         return 'Unfunded destination needs at least '
             '${XrpAmount.dropsToXrp(reserve.toString())} XRP';
@@ -210,6 +226,28 @@ class PaymentValidators {
 /// Secrets are accepted as method arguments (from KeyVault at the call site),
 /// kept in local variables only, and never logged.
 class PaymentService {
+  /// Signs and submits a non-Payment transaction using the same guarded path
+  /// as payments. The transaction builder must contain only public inputs.
+  ///
+  /// [expectedFeeDrops] is the fee the user was actually shown at review. When
+  /// given, autoFill must land on that same figure or signing is refused —
+  /// otherwise a fee spike between review and signature is paid silently.
+  Future<PaymentSubmitResult> signAndSubmitTransaction({
+    required String secret,
+    required String fromAddress,
+    required XRPProvider rpc,
+    required SubmittableTransaction Function(String publicKeyHex) build,
+    String? expectedFeeDrops,
+  }) {
+    return _signAndSubmit(
+      secret: secret,
+      fromAddress: fromAddress,
+      rpc: rpc,
+      build: build,
+      expectedFeeDrops: expectedFeeDrops,
+    );
+  }
+
   /// Reconstruct an [XRPPrivateKey] from a stored secret using the same rules
   /// as [WalletImporter] (mnemonic BIP44 path or family seed).
   ///
@@ -232,18 +270,15 @@ class PaymentService {
     if (SecretValidator.looksLikeMnemonic(trimmed)) {
       final List<int> seedBytes;
       try {
-        seedBytes =
-            Bip39SeedGenerator(Mnemonic.fromString(trimmed)).generate();
+        seedBytes = Bip39SeedGenerator(Mnemonic.fromString(trimmed)).generate();
       } catch (e) {
         throw ArgumentError('Invalid mnemonic: $e');
       }
 
-      final bip32 = Bip44.fromSeed(seedBytes, Bip44Coins.ripple)
-          .purpose
-          .coin
-          .account(0)
-          .change(Bip44Changes.chainExt)
-          .addressIndex(0);
+      final bip32 = Bip44.fromSeed(
+        seedBytes,
+        Bip44Coins.ripple,
+      ).purpose.coin.account(0).change(Bip44Changes.chainExt).addressIndex(0);
       final raw = bip32.privateKey.raw;
 
       // Prefer secp256k1 (current import + xrpl.js). Fall back to ed25519 only
@@ -532,9 +567,7 @@ class PaymentService {
     // STX\0-prefixed software signing digest.
     final txBlob = transaction.toTransactionBlobBytes();
     final sigHex = await signTransactionBlob(txBlob);
-    transaction.setSignature(
-      XRPLSignature.sign(publicKeyHex, sigHex),
-    );
+    transaction.setSignature(XRPLSignature.sign(publicKeyHex, sigHex));
 
     final trBlob = transaction.toTransactionBlob();
     final result = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
@@ -545,6 +578,7 @@ class PaymentService {
       engineResultMessage: result.engineResultMessage,
       isSuccess: result.isSuccess,
       feeDrops: feeDrops,
+      lastLedgerSequence: transaction.lastLedgerSequence,
     );
   }
 
@@ -556,16 +590,22 @@ class PaymentService {
     String? expectedFeeDrops,
   }) async {
     // Local-only key material; not stored or logged.
-    final privateKey = privateKeyFromSecret(
-      secret,
-      expectedAddress: fromAddress,
-    );
+    final XRPPrivateKey privateKey;
+    try {
+      privateKey = privateKeyFromSecret(secret, expectedAddress: fromAddress);
+    } catch (_) {
+      throw const PaymentOperationException('key reconstruction');
+    }
     final publicKey = privateKey.getPublic();
     final signerAddress = publicKey.toClassicAddress();
     final pubHex = publicKey.toHex();
     final transaction = build(pubHex);
 
-    await XRPHelper.autoFill(rpc, transaction);
+    try {
+      await XRPHelper.autoFill(rpc, transaction);
+    } catch (_) {
+      throw const PaymentOperationException('autofill');
+    }
     final feeDrops = transaction.fee?.toString();
     final feeError = expectedFeeDrops == null
         ? PaymentValidators.validateFeeDrops(feeDrops)
@@ -575,19 +615,38 @@ class PaymentService {
           );
     if (feeError != null) throw ArgumentError(feeError);
 
-    final blob = transaction.toSigningBlobBytes(signerAddress);
-    final sig = privateKey.sign(blob);
-    transaction.setSignature(sig);
+    try {
+      final blob = transaction.toSigningBlobBytes(signerAddress);
+      final sig = privateKey.sign(blob);
+      transaction.setSignature(sig);
+    } catch (_) {
+      throw const PaymentOperationException('signing');
+    }
 
-    final trBlob = transaction.toTransactionBlob();
-    final result = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
+    final PaymentSubmitResult result;
+    try {
+      final trBlob = transaction.toTransactionBlob();
+      final response = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
+      result = PaymentSubmitResult(
+        hash: response.txJson.hash ?? transaction.getHash(),
+        engineResult: response.engineResult,
+        engineResultMessage: response.engineResultMessage,
+        isSuccess: response.isSuccess,
+        feeDrops: feeDrops,
+        lastLedgerSequence: transaction.lastLedgerSequence,
+      );
+    } on BaseXRPLPluginException {
+      rethrow;
+    } on RPCError {
+      rethrow;
+    } on TimeoutException {
+      throw const PaymentOperationException('submit timeout');
+    } on FormatException {
+      throw const PaymentOperationException('submit response parsing');
+    } catch (_) {
+      throw const PaymentOperationException('submit transport');
+    }
 
-    return PaymentSubmitResult(
-      hash: result.txJson.hash ?? transaction.getHash(),
-      engineResult: result.engineResult,
-      engineResultMessage: result.engineResultMessage,
-      isSuccess: result.isSuccess,
-      feeDrops: feeDrops,
-    );
+    return result;
   }
 }

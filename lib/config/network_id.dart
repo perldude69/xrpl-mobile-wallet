@@ -2,9 +2,9 @@ enum NetworkId { mainnet, testnet }
 
 extension NetworkIdX on NetworkId {
   String get label => switch (this) {
-        NetworkId.mainnet => 'Mainnet',
-        NetworkId.testnet => 'Testnet',
-      };
+    NetworkId.mainnet => 'Mainnet',
+    NetworkId.testnet => 'Testnet',
+  };
 
   /// Preferred WebSocket URL (primary for this network).
   ///
@@ -23,14 +23,12 @@ extension NetworkIdX on NetworkId {
   ///
   /// Status UI shows host only (never a URL query string).
   List<String> get wssEndpoints => switch (this) {
-        NetworkId.mainnet => const [
-            'wss://xrplcluster.com',
-            'wss://mainnet.xrpl-rpc.com',
-          ],
-        NetworkId.testnet => const [
-            'wss://s.altnet.rippletest.net:51233',
-          ],
-      };
+    NetworkId.mainnet => const [
+      'wss://xrplcluster.com',
+      'wss://mainnet.xrpl-rpc.com',
+    ],
+    NetworkId.testnet => const ['wss://s.altnet.rippletest.net:51233'],
+  };
 
   /// Preferred JSON-RPC HTTP URL (primary for this network).
   String get defaultHttp => httpEndpoints.first;
@@ -42,14 +40,15 @@ extension NetworkIdX on NetworkId {
   /// 1. Public cluster (`xrplcluster.com`)
   /// 2. Ankr free public infra (`mainnet.xrpl-rpc.com`) — https://xrpl-rpc.com
   List<String> get httpEndpoints => switch (this) {
-        NetworkId.mainnet => const [
-            'https://xrplcluster.com/',
-            'https://mainnet.xrpl-rpc.com/',
-          ],
-        NetworkId.testnet => const [
-            'https://s.altnet.rippletest.net:51234/',
-          ],
-      };
+    NetworkId.mainnet => const [
+      'https://xrplcluster.com/',
+      'https://mainnet.xrpl-rpc.com/',
+    ],
+    NetworkId.testnet => const [
+      'https://testnet.xrpl-rpc.com/',
+      'https://s.altnet.rippletest.net:51234/',
+    ],
+  };
 }
 
 /// Parse watcher/address-book network name; unknown values default to mainnet.

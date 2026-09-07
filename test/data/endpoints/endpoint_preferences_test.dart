@@ -11,13 +11,25 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('defaults to full mainnet catalog', () async {
+  test('default mainnet endpoints use the maintainer server', () async {
     final p = EndpointPreferences();
     expect(await p.selectedHttpIds(), EndpointPreferences.defaultHttpIds);
     expect(await p.selectedWssIds(), EndpointPreferences.defaultWssIds);
     final http = await p.httpUrls(NetworkId.mainnet);
-    expect(http.first, 'https://xrplcluster.com/');
-    expect(http.length, 2);
+    expect(http, ['https://rpc.rich-list.info/']);
+    expect(
+      EndpointPreferences.mainnetHttpCatalog.any((e) => e.id == 'rich-list'),
+      isTrue,
+    );
+    expect(EndpointPreferences.defaultHttpIds, contains('rich-list'));
+    expect(http, contains('https://rpc.rich-list.info/'));
+  });
+
+  test('user can opt into the maintainer RPC explicitly', () async {
+    final p = EndpointPreferences();
+    await p.setHttpIds(['rich-list', 'cluster']);
+    final urls = await p.httpUrls(NetworkId.mainnet);
+    expect(urls, ['https://rpc.rich-list.info/', 'https://xrplcluster.com/']);
   });
 
   test('setHttpIds filters and persists order', () async {
@@ -25,17 +37,23 @@ void main() {
     await p.setHttpIds(['ankr', 'cluster', 'unknown']);
     expect(await p.selectedHttpIds(), ['ankr', 'cluster']);
     final urls = await p.httpUrls(NetworkId.mainnet);
-    expect(urls, [
-      'https://mainnet.xrpl-rpc.com/',
-      'https://xrplcluster.com/',
-    ]);
+    expect(urls, ['https://mainnet.xrpl-rpc.com/', 'https://xrplcluster.com/']);
   });
 
-  test('empty set falls back to full catalog', () async {
-    final p = EndpointPreferences();
-    await p.setWssIds([]);
-    expect(await p.selectedWssIds(), EndpointPreferences.defaultWssIds);
-  });
+  test(
+    'empty set falls back to the default set, not the raw catalog',
+    () async {
+      final p = EndpointPreferences();
+      await p.setWssIds([]);
+      expect(await p.selectedWssIds(), EndpointPreferences.defaultWssIds);
+      await p.setHttpIds([]);
+      expect(await p.selectedHttpIds(), EndpointPreferences.defaultHttpIds);
+      expect(
+        await p.httpUrls(NetworkId.mainnet),
+        contains('https://rpc.rich-list.info/'),
+      );
+    },
+  );
 
   test('stale personal catalog ids are dropped', () async {
     SharedPreferences.setMockInitialValues({
@@ -55,7 +73,10 @@ void main() {
   group('EndpointUrl.validate', () {
     test('rejects cleartext http and ws', () {
       expect(
-        EndpointUrl.validate(kind: EndpointKind.http, url: 'http://example.com'),
+        EndpointUrl.validate(
+          kind: EndpointKind.http,
+          url: 'http://example.com',
+        ),
         contains('https://'),
       );
       expect(
@@ -107,13 +128,12 @@ void main() {
       url: 'https://rpc.example.com/',
     );
     expect(await p.httpUrls(NetworkId.mainnet), [
-      'https://xrplcluster.com/',
-      'https://mainnet.xrpl-rpc.com/',
+      'https://rpc.rich-list.info/',
       'https://rpc.example.com/',
     ]);
   });
 
-  test('empty built-in still includes full catalog plus custom', () async {
+  test('empty built-in falls back to the default set plus custom', () async {
     final p = EndpointPreferences();
     await p.setHttpIds([]);
     await p.addCustom(
@@ -123,11 +143,7 @@ void main() {
       url: 'https://rpc.example.com/',
     );
     final urls = await p.httpUrls(NetworkId.mainnet);
-    expect(urls, [
-      'https://xrplcluster.com/',
-      'https://mainnet.xrpl-rpc.com/',
-      'https://rpc.example.com/',
-    ]);
+    expect(urls, ['https://rpc.rich-list.info/', 'https://rpc.example.com/']);
   });
 
   test('addCustom rejects http://', () async {
@@ -158,8 +174,7 @@ void main() {
     );
     await p.moveCustom(id: 'b', kind: EndpointKind.wss, delta: -1);
     expect(await p.wssUrls(NetworkId.mainnet), [
-      'wss://xrplcluster.com',
-      'wss://mainnet.xrpl-rpc.com',
+      'wss://wss.rich-list.info',
       'wss://b.example.com',
       'wss://a.example.com',
     ]);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/app_exit.dart';
 import 'package:xrpl_mobile_wallet/data/watcher/account_watcher.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
@@ -37,6 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _refreshWatcherState() async {
+    await ref.read(walletListControllerProvider.notifier).reload();
     final watcher = ref.read(accountWatcherProvider);
     final enabled = await watcher.isEnabled();
     final running = await watcher.isRunning();
@@ -66,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Exit app?'),
-         content: const Text('Close Zerp Wallet completely.'),
+        content: const Text('Close Zerp Wallet completely.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -143,8 +145,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context,
       ref,
       title: 'Confirm wipe',
-      message:
-          'Enter your wallet PIN to erase all local data on this device.',
+      message: 'Enter your wallet PIN to erase all local data on this device.',
       confirmLabel: 'Wipe',
     );
     if (!pinOk || !mounted) return;
@@ -173,9 +174,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.read(lockControllerProvider.notifier).resetToNeedsSetup();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wipe failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Wipe failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -204,10 +205,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           subtitle: Text(
             enabled
                 ? (_watcherRunning
-                    ? 'Running · ${wallets.length} account(s)'
-                    : wallets.isEmpty
-                        ? 'Enabled · add a wallet to start'
-                        : 'Enabled · starting…')
+                      ? 'Running · ${wallets.length} account(s)'
+                      : wallets.isEmpty
+                      ? 'Enabled · add a wallet to start'
+                      : 'Enabled · starting…')
                 : 'Disabled',
           ),
           value: enabled,
@@ -295,10 +296,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Text('About', style: sectionStyle),
         ),
         ListTile(
-           title: const Text('Zerp Wallet'),
+          title: const Text('Zerp Wallet'),
           subtitle: const Text(
             'Android wallet manager for the XRP Ledger\n'
-            'Version 1.0.1 · Create or import BIP39 wallets',
+            'Version ${AppConfig.appVersionName} · Create or import BIP39 wallets',
           ),
           isThreeLine: true,
           trailing: IconButton(
@@ -315,7 +316,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ListTile(
           leading: const Icon(Icons.power_settings_new),
           title: const Text('Exit app'),
-           subtitle: const Text('Close Zerp Wallet completely'),
+          subtitle: const Text('Close Zerp Wallet completely'),
           enabled: !_busy,
           onTap: _busy ? null : _confirmExitApp,
         ),

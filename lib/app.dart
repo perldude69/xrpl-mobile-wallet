@@ -4,6 +4,7 @@ import 'config/app_config.dart';
 import 'config/theme.dart';
 import 'state/lock_controller.dart';
 import 'state/providers.dart';
+import 'state/trade_controller.dart';
 import 'state/wallet_list_controller.dart';
 import 'ui/lock/pin/setup_pin_screen.dart';
 import 'ui/lock/pin/unlock_screen.dart';
@@ -33,8 +34,8 @@ class _AppGate extends ConsumerWidget {
     final phase = ref.watch(lockControllerProvider);
     return switch (phase) {
       LockPhase.loading => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        body: Center(child: CircularProgressIndicator()),
+      ),
       LockPhase.needsSetup => const SetupPinScreen(),
       LockPhase.locked => const UnlockScreen(),
       LockPhase.unlocked => const LockLifecycle(child: MainShell()),
@@ -69,6 +70,24 @@ class _LockLifecycleState extends ConsumerState<LockLifecycle>
         await watcher.syncAddressBook(wallets, network);
         await watcher.ensureStartedIfEnabled();
       } catch (_) {}
+      _reconcileTrades();
+    });
+  }
+
+  /// Resolve outstanding trade orders against the ledger.
+  ///
+  /// Kicked here rather than from the Trade screen on purpose: an order placed
+  /// and then backgrounded has to reach a truthful status without anyone
+  /// looking at it. Runs in the UI process only — the watcher isolate must
+  /// never open a second [AppDatabase] on the same file.
+  ///
+  /// Fire-and-forget and silent: reconciliation is a background truth-up, not
+  /// something to interrupt an unlock for.
+  void _reconcileTrades() {
+    Future(() async {
+      try {
+        await ref.read(tradeReconcilerProvider).reconcileAll();
+      } catch (_) {}
     });
   }
 
@@ -90,8 +109,11 @@ class _LockLifecycleState extends ConsumerState<LockLifecycle>
         final elapsed = DateTime.now().difference(pausedAt).inSeconds;
         if (elapsed >= AppConfig.autoLockSeconds) {
           ref.read(lockControllerProvider.notifier).lock();
+          return;
         }
       }
+      // Still unlocked: an order may have filled while the app was away.
+      _reconcileTrades();
     }
   }
 

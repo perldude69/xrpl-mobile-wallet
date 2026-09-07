@@ -1,12 +1,25 @@
 # XRPL Mobile Wallet — Agent Instructions
 
-Android-first Flutter wallet for the XRP Ledger (app title: **XRPL Mobile Wallet**).
+Android Flutter wallet for the XRP Ledger (app title: **XRPL Mobile Wallet**).
 Local-first: secrets in Keystore, metadata in SQLite, background watcher is
 address-only. Unlock-screen runner title: **Zerpland**.
 
-Design: `docs/design/2026-07-20-xrpl-mobile-wallet-design.md`
-Attach-keys: `docs/design/2026-08-02-attach-keys-watch-wallet-design.md`
-Game PIN: `docs/design/2026-08-03-game-pin-design.md`
+**Destined for the Google Play Store.** This is a shipping product for
+third-party users holding real funds — sideloading is only for development and
+progress checks. Consequences that bind every decision:
+
+- **No design may have a "user loses their funds" failure mode.** Assume users
+  enroll fingerprints, change screen locks, replace phones, and do not have
+  their recovery phrase written down. A mechanism that is merely inconvenient
+  for the maintainer can be catastrophic for a stranger.
+- Play obligations are real work, not paperwork: financial-services / crypto
+  declaration, Data Safety form, privacy-policy URL, and Play's rolling target
+  API requirement (currently satisfied by `targetSdk` 36).
+- Play distribution ships an **App Bundle** signed with the upload keystore
+  (`android/key.properties`); `tool/build_release.sh` remains the sideload path.
+
+Plan: `docs/design/2026-09-06-consolidated-plan.md` (Part I = shipped spec —
+core design, attach-keys, game PIN; Part II = queued work — smart trade execution)
 History: `docs/history/2026-07-20-xrpl-mobile-wallet.md`
 User-facing notes: `README.md`
 
@@ -19,7 +32,7 @@ User-facing notes: `README.md`
 | UI | Flutter 3 / Dart 3 (`sdk: ^3.10.4`), Material 3 dark (seed `0xFF00A3BF`), Riverpod 2 |
 | XRPL | `xrpl_dart` + `blockchain_utils` |
 | Secrets | `flutter_secure_storage` (Android Keystore) via `KeyVault` |
-| DB | Drift + SQLite (`lib/data/database/`), `schemaVersion` 3 |
+| DB | Drift + SQLite (`lib/data/database/`), `schemaVersion` 4 |
 | Watcher | `flutter_background_service` FGS (`dataSync`) + WSS; public addresses only |
 | Ledger USB | `ledger_usb_plus` — **local patched copy** at `packages/ledger_usb_plus` (path dep; fixes Android endpoint discovery). Edit the local copy, not pub cache. |
 | Package / Android | `xrpl_mobile_wallet` / `info.richlist.wallet` (Java 17, core-library desugaring for notifications) |
@@ -92,8 +105,11 @@ Without that file, release falls back to debug signing for personal sideload.
 3. **Wallet entropy** — New wallets: OS CSPRNG (`Random.secure`) is always the primary entropy; dice/word ritual is **mixed in**, never a replacement. See `EntropyMixer` domain string; do not weaken or skip OS entropy. Never use package Fortuna for seed bytes.
 4. **Screen security** — Keep screenshot blocking on create/import/attach-keys secret screens (`ScreenSecurity` → `MainActivity` FLAG_SECURE).
 5. **No logging secrets** — Never log mnemonics, seeds, PINs, or private keys. Status UI must show endpoint **host only** — never a URL query string.
-6. **PIN** — Min length 6; auto-lock after `AppConfig.autoLockSeconds` (90s) in background. Leave the process with `exitApplication()` (`SystemNavigator.pop`), not `exit(0)`.
-7. **Game PIN** — Optional second salted hash (`game_pin_hash` / `game_pin_salt`) via `PinService`. Unlock: wallet PIN first, then game PIN → Zerpland runner while staying locked. Must differ from wallet PIN. When a game PIN is set, do **not** open the game after 3 failed attempts (only the game PIN does). Settings: set / change / clear (wallet PIN required). Spec: `docs/design/2026-08-03-game-pin-design.md`.
+6. **PIN** — Min length **8** (`AppConfig.pinMinLength`); auto-lock after `AppConfig.autoLockSeconds` (90s) in background. Leave the process with `exitApplication()` (`SystemNavigator.pop`), not `exit(0)`. The PIN is a **cryptographic factor**, not just a lockout — see rule 7 — so its entropy is a security parameter and the minimum must not be lowered.
+7. **Secrets at rest** — A seed is stored only as an `Argon2id(PIN)` + AES-256-GCM `SecretEnvelope`, never as plaintext, and the envelope then goes into Keystore-backed storage. Two rules follow:
+   - **Never auth-bind the key that protects a seed.** `setUserAuthenticationRequired(true)` keys are destroyed by biometric enrollment or screen-lock removal, which would silently take a user's funds with it. Biometrics are a **convenience** layer only (they cache the derived key); losing that layer must only ever cost a PIN prompt.
+   - Decryption failure is surfaced as an explicit "keys unavailable" state that offers *Attach keys* — never a silent wipe, never a crash. `resetOnError` stays `false`.
+8. **Game PIN** — Optional second salted hash (`game_pin_hash` / `game_pin_salt`) via `PinService`. Unlock: wallet PIN first, then game PIN → Zerpland runner while staying locked. Must differ from wallet PIN. When a game PIN is set, do **not** open the game after 3 failed attempts (only the game PIN does). Settings: set / change / clear (wallet PIN required). Spec: `docs/design/2026-09-06-consolidated-plan.md` §I.10.
 
 ---
 
@@ -130,7 +146,8 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 - **Token names:** Bundled XRPSCAN snapshot + hex→ASCII fallback; no network fetch required for labels. Loaded in `main()` into `CurrencyDisplay`.
 - **XRP/USD:** XRPL-Labs TrustSet oracle `rXUMMaPpZqPutoRszR29jtC8amWq3APkx` (`XrpUsdOracle` parser, `PriceFeedController`, last rate in prefs). Portfolio toggle XRP vs USD — not a trading feed.
 - **Payments:** Build/sign/submit software txs in `PaymentService`; secrets passed in from KeyVault at the call site, not stored on the service. Amounts via `XrpAmount` (drops as `BigInt` strings). Ledger send signs on device then submits the blob. RLUSD TrustSet (official issuer, NoRipple) uses the same generic sign/submit helper as Payment; only shown when `canSign` and the line is not already on `account_lines`.
-- **Drift:** Edit `tables.dart` / `app_database.dart`; never hand-edit `app_database.g.dart`. Migrations: v2 `accentColor`, v3 `useLedger` + `ledgerAccountIndex`.
+- **Drift:** Edit `tables.dart` / `app_database.dart`; never hand-edit `app_database.g.dart`. Migrations: v2 `accentColor`, v3 `useLedger` + `ledgerAccountIndex`, v4 `trade_executions` + `trade_fills`.
+- **Trade:** XRP ⇄ RLUSD only. Pure logic in `lib/domain/trade/` (no `double` — money maths goes through `TradeDecimal`); services in `lib/data/trade/`; `TradeRepository` is the only thing that touches the trade tables. The reconciler runs in the **UI process** (kicked from `LockLifecycle` at unlock and on resume), never in the watcher isolate — a second `AppDatabase` on the same file corrupts. Its three rules: never blind-retry an ambiguous submission, `LastLedgerSequence` is the only proof a transaction is dead, and fills come from validated metadata only (`FillParser`), never client-side subtraction. Trade signing is gated to `hasLocalKeys` until the Ledger path exists. Plan: `docs/design/2026-09-06-consolidated-plan.md` §II.A.
 - **Game scores:** local top-5 only (`RunnerScoreboard`); no network.
 
 ---
@@ -146,10 +163,14 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 
 ## Product scope notes
 
-- Android-first sideload; not a Play Store product.
+- **Google Play release is the goal**; sideload builds are for development.
+  Treat user-facing failure modes, recovery paths and error copy as shippable
+  product surface, not developer conveniences.
 - Features in tree: create (entropy ritual), import (mnemonic / family seed / watch-only / encrypted export), send, receive, RLUSD trust line (signing / Ledger), activity, PIN + optional game PIN + biometrics, FGS watcher, unlock-screen Zerpland runner (game PIN or 3-fail decoy when no game PIN; top-5 local leaderboard), XRP/USD portfolio display, connection status chip.
 - Ledger Device checkbox on wallet detail enables Send for watch-only (USB, XRP app, path `m/44'/144'/index'/0/0`); no seed on phone; address mismatch → user error. See `lib/data/ledger_device/`.
 - Non-goals unless asked: DEX, NFTs, multi-sig UX, remote push server, iOS release polish.
+- Secret-at-rest design (Argon2id PIN envelope, biometrics as convenience only):
+  `docs/design/2026-09-06-auth-bound-secret-storage.md`.
 
 ---
 

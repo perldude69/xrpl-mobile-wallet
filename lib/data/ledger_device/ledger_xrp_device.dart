@@ -14,13 +14,7 @@ const int kLedgerUsbVendorId = 0x2c97;
 /// BIP44 XRP path: m/44'/144'/account'/0/0
 List<int> xrpBip32Path({int accountIndex = 0}) {
   const harden = 0x80000000;
-  return [
-    44 | harden,
-    144 | harden,
-    accountIndex | harden,
-    0,
-    0,
-  ];
+  return [44 | harden, 144 | harden, accountIndex | harden, 0, 0];
 }
 
 Uint8List pathBytes({int accountIndex = 0}) {
@@ -63,16 +57,20 @@ void checkApduStatus(Uint8List response, {String step = 'APDU'}) {
   if (sw == 0x9000) return;
 
   final msg = switch (sw) {
+    0x650f =>
+      'Ledger connection was refused (0x650f). Unlock the device, close Ledger Live, '
+          'open the XRP app until it says Application is ready, then retry.',
     0x6985 => 'Rejected on the Ledger device.',
     0x6982 => 'Ledger security status not satisfied (locked or not ready).',
     0x6a15 || 0x6e00 || 0x6d00 =>
       'Wrong app or CLA/INS not supported. Open the XRP app on the Ledger.',
-    0x6807 || 0x6808 || 0x5515 =>
-      'Ledger is locked. Unlock it and open the XRP app.',
+    0x6807 ||
+    0x6808 ||
+    0x5515 => 'Ledger is locked. Unlock it and open the XRP app.',
     // XRP app: bad tx payload / parse failure (often wrong blob or oversized chunk).
     0x680b =>
       'Ledger rejected the transaction data (0x680b). '
-      'Ensure the XRP app is open and try again.',
+          'Ensure the XRP app is open and try again.',
     0x6a80 => 'Incorrect data sent to Ledger (invalid transaction or path).',
     0x6a82 => 'File not found on device (is the XRP app open?).',
     0x6b00 => 'Wrong P1/P2 parameters for Ledger XRP APDU.',
@@ -208,11 +206,7 @@ class LedgerUsbSession {
       _log(
         'PlatformException during open: code=${e.code} message=${e.message}\n$st',
       );
-      throw LedgerDeviceException(
-        _platformMessage(e),
-        step: 'open',
-        cause: e,
-      );
+      throw LedgerDeviceException(_platformMessage(e), step: 'open', cause: e);
     } catch (e, st) {
       _log('Unexpected open error: $e\n$st');
       throw LedgerDeviceException(
@@ -239,9 +233,9 @@ class LedgerUsbSession {
       throw LedgerDeviceException(
         all.isEmpty
             ? 'No USB devices found. Use a data-capable OTG cable, unlock '
-                'the Ledger, and open the XRP app before sending.'
+                  'the Ledger, and open the XRP app before sending.'
             : 'USB device(s) found but none are Ledger (vendor 0x2c97). '
-                'Check the OTG cable and that the Ledger is unlocked.',
+                  'Check the OTG cable and that the Ledger is unlocked.',
         step: 'listDevices',
       );
     }
@@ -285,11 +279,7 @@ class LedgerUsbSession {
       rethrow;
     } on PlatformException catch (e, st) {
       _log('PlatformException during $step: ${e.code} ${e.message}\n$st');
-      throw LedgerDeviceException(
-        _platformMessage(e),
-        step: step,
-        cause: e,
-      );
+      throw LedgerDeviceException(_platformMessage(e), step: step, cause: e);
     } catch (e, st) {
       _log('Error during $step: $e\n$st');
       throw LedgerDeviceException(
@@ -313,7 +303,7 @@ class LedgerUsbSession {
       return msg.isNotEmpty
           ? msg
           : 'USB session not open. Open the XRP app on the Ledger, grant the '
-              'system USB dialog, then retry.';
+                'system USB dialog, then retry.';
     }
     if (lower.contains('permission')) {
       return msg.isNotEmpty

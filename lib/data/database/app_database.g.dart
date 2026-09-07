@@ -112,11 +112,13 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     false,
     type: DriftSqlType.bool,
     requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("use_ledger" IN (0, 1))',
+    ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _ledgerAccountIndexMeta = const VerificationMeta(
-    'ledgerAccountIndex',
-  );
+  static const VerificationMeta _ledgerAccountIndexMeta =
+      const VerificationMeta('ledgerAccountIndex');
   @override
   late final GeneratedColumn<int> ledgerAccountIndex = GeneratedColumn<int>(
     'ledger_account_index',
@@ -312,8 +314,14 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final String importMethod;
   final DateTime createdAt;
   final int sortOrder;
+
+  /// Optional ARGB accent; null = derive from address.
   final int? accentColor;
+
+  /// When true, Send uses a connected Ledger (no seed on phone).
   final bool useLedger;
+
+  /// BIP44 account index for Ledger path m/44'/144'/index'/0/0.
   final int ledgerAccountIndex;
   const Wallet({
     required this.id,
@@ -325,8 +333,8 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     required this.createdAt,
     required this.sortOrder,
     this.accentColor,
-    this.useLedger = false,
-    this.ledgerAccountIndex = 0,
+    required this.useLedger,
+    required this.ledgerAccountIndex,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -572,7 +580,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (accentColor != null) 'accent_color': accentColor,
       if (useLedger != null) 'use_ledger': useLedger,
-      if (ledgerAccountIndex != null) 'ledger_account_index': ledgerAccountIndex,
+      if (ledgerAccountIndex != null)
+        'ledger_account_index': ledgerAccountIndex,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1765,6 +1774,1700 @@ class AppSettingsRowsCompanion extends UpdateCompanion<AppSettingsRow> {
   }
 }
 
+class $TradeExecutionsTable extends TradeExecutions
+    with TableInfo<$TradeExecutionsTable, TradeExecution> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TradeExecutionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _walletIdMeta = const VerificationMeta(
+    'walletId',
+  );
+  @override
+  late final GeneratedColumn<String> walletId = GeneratedColumn<String>(
+    'wallet_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _networkMeta = const VerificationMeta(
+    'network',
+  );
+  @override
+  late final GeneratedColumn<String> network = GeneratedColumn<String>(
+    'network',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sideMeta = const VerificationMeta('side');
+  @override
+  late final GeneratedColumn<String> side = GeneratedColumn<String>(
+    'side',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseCurrencyMeta = const VerificationMeta(
+    'baseCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> baseCurrency = GeneratedColumn<String>(
+    'base_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseIssuerMeta = const VerificationMeta(
+    'baseIssuer',
+  );
+  @override
+  late final GeneratedColumn<String> baseIssuer = GeneratedColumn<String>(
+    'base_issuer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quoteCurrencyMeta = const VerificationMeta(
+    'quoteCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> quoteCurrency = GeneratedColumn<String>(
+    'quote_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quoteIssuerMeta = const VerificationMeta(
+    'quoteIssuer',
+  );
+  @override
+  late final GeneratedColumn<String> quoteIssuer = GeneratedColumn<String>(
+    'quote_issuer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetAmountMeta = const VerificationMeta(
+    'targetAmount',
+  );
+  @override
+  late final GeneratedColumn<String> targetAmount = GeneratedColumn<String>(
+    'target_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _filledAmountMeta = const VerificationMeta(
+    'filledAmount',
+  );
+  @override
+  late final GeneratedColumn<String> filledAmount = GeneratedColumn<String>(
+    'filled_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('0'),
+  );
+  static const VerificationMeta _orderTypeMeta = const VerificationMeta(
+    'orderType',
+  );
+  @override
+  late final GeneratedColumn<String> orderType = GeneratedColumn<String>(
+    'order_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _txHashMeta = const VerificationMeta('txHash');
+  @override
+  late final GeneratedColumn<String> txHash = GeneratedColumn<String>(
+    'tx_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _offerSequenceMeta = const VerificationMeta(
+    'offerSequence',
+  );
+  @override
+  late final GeneratedColumn<int> offerSequence = GeneratedColumn<int>(
+    'offer_sequence',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastLedgerSequenceMeta =
+      const VerificationMeta('lastLedgerSequence');
+  @override
+  late final GeneratedColumn<int> lastLedgerSequence = GeneratedColumn<int>(
+    'last_ledger_sequence',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastLedgerIndexMeta = const VerificationMeta(
+    'lastLedgerIndex',
+  );
+  @override
+  late final GeneratedColumn<int> lastLedgerIndex = GeneratedColumn<int>(
+    'last_ledger_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _expirationMeta = const VerificationMeta(
+    'expiration',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expiration = GeneratedColumn<DateTime>(
+    'expiration',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    walletId,
+    network,
+    side,
+    baseCurrency,
+    baseIssuer,
+    quoteCurrency,
+    quoteIssuer,
+    targetAmount,
+    filledAmount,
+    orderType,
+    status,
+    lastError,
+    txHash,
+    offerSequence,
+    lastLedgerSequence,
+    lastLedgerIndex,
+    expiration,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'trade_executions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TradeExecution> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('wallet_id')) {
+      context.handle(
+        _walletIdMeta,
+        walletId.isAcceptableOrUnknown(data['wallet_id']!, _walletIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_walletIdMeta);
+    }
+    if (data.containsKey('network')) {
+      context.handle(
+        _networkMeta,
+        network.isAcceptableOrUnknown(data['network']!, _networkMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_networkMeta);
+    }
+    if (data.containsKey('side')) {
+      context.handle(
+        _sideMeta,
+        side.isAcceptableOrUnknown(data['side']!, _sideMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sideMeta);
+    }
+    if (data.containsKey('base_currency')) {
+      context.handle(
+        _baseCurrencyMeta,
+        baseCurrency.isAcceptableOrUnknown(
+          data['base_currency']!,
+          _baseCurrencyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_baseCurrencyMeta);
+    }
+    if (data.containsKey('base_issuer')) {
+      context.handle(
+        _baseIssuerMeta,
+        baseIssuer.isAcceptableOrUnknown(data['base_issuer']!, _baseIssuerMeta),
+      );
+    }
+    if (data.containsKey('quote_currency')) {
+      context.handle(
+        _quoteCurrencyMeta,
+        quoteCurrency.isAcceptableOrUnknown(
+          data['quote_currency']!,
+          _quoteCurrencyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_quoteCurrencyMeta);
+    }
+    if (data.containsKey('quote_issuer')) {
+      context.handle(
+        _quoteIssuerMeta,
+        quoteIssuer.isAcceptableOrUnknown(
+          data['quote_issuer']!,
+          _quoteIssuerMeta,
+        ),
+      );
+    }
+    if (data.containsKey('target_amount')) {
+      context.handle(
+        _targetAmountMeta,
+        targetAmount.isAcceptableOrUnknown(
+          data['target_amount']!,
+          _targetAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetAmountMeta);
+    }
+    if (data.containsKey('filled_amount')) {
+      context.handle(
+        _filledAmountMeta,
+        filledAmount.isAcceptableOrUnknown(
+          data['filled_amount']!,
+          _filledAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('order_type')) {
+      context.handle(
+        _orderTypeMeta,
+        orderType.isAcceptableOrUnknown(data['order_type']!, _orderTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_orderTypeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('tx_hash')) {
+      context.handle(
+        _txHashMeta,
+        txHash.isAcceptableOrUnknown(data['tx_hash']!, _txHashMeta),
+      );
+    }
+    if (data.containsKey('offer_sequence')) {
+      context.handle(
+        _offerSequenceMeta,
+        offerSequence.isAcceptableOrUnknown(
+          data['offer_sequence']!,
+          _offerSequenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_ledger_sequence')) {
+      context.handle(
+        _lastLedgerSequenceMeta,
+        lastLedgerSequence.isAcceptableOrUnknown(
+          data['last_ledger_sequence']!,
+          _lastLedgerSequenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_ledger_index')) {
+      context.handle(
+        _lastLedgerIndexMeta,
+        lastLedgerIndex.isAcceptableOrUnknown(
+          data['last_ledger_index']!,
+          _lastLedgerIndexMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expiration')) {
+      context.handle(
+        _expirationMeta,
+        expiration.isAcceptableOrUnknown(data['expiration']!, _expirationMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TradeExecution map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TradeExecution(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      walletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wallet_id'],
+      )!,
+      network: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network'],
+      )!,
+      side: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}side'],
+      )!,
+      baseCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_currency'],
+      )!,
+      baseIssuer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_issuer'],
+      ),
+      quoteCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quote_currency'],
+      )!,
+      quoteIssuer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quote_issuer'],
+      ),
+      targetAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_amount'],
+      )!,
+      filledAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}filled_amount'],
+      )!,
+      orderType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}order_type'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      txHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tx_hash'],
+      ),
+      offerSequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}offer_sequence'],
+      ),
+      lastLedgerSequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_ledger_sequence'],
+      ),
+      lastLedgerIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_ledger_index'],
+      ),
+      expiration: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expiration'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TradeExecutionsTable createAlias(String alias) {
+    return $TradeExecutionsTable(attachedDatabase, alias);
+  }
+}
+
+class TradeExecution extends DataClass implements Insertable<TradeExecution> {
+  final String id;
+  final String walletId;
+  final String network;
+
+  /// `buy` or `sell`, read as "…the base asset".
+  final String side;
+
+  /// Asset given up. Issuer is null for XRP.
+  final String baseCurrency;
+  final String? baseIssuer;
+
+  /// Asset wanted. Issuer is null for XRP.
+  final String quoteCurrency;
+  final String? quoteIssuer;
+  final String targetAmount;
+
+  /// Sum of `TradeFills.filledBase`, maintained by the reconciler from
+  /// validated ledger metadata — never by client-side subtraction.
+  final String filledAmount;
+
+  /// `market` (IOC/FOK) or `limit` (resting).
+  final String orderType;
+  final String status;
+  final String? lastError;
+
+  /// Hash of the submitted OfferCreate, once known.
+  final String? txHash;
+
+  /// Sequence of the resting offer this order created, for OfferCancel and
+  /// for matching `account_offers`.
+  final int? offerSequence;
+
+  /// `LastLedgerSequence` of the submitted transaction. Past this ledger with
+  /// no validated result ⇒ definitively failed, safe to retry.
+  final int? lastLedgerSequence;
+
+  /// Ledger index the reconciler last checked against.
+  final int? lastLedgerIndex;
+
+  /// Optional XRPL `Expiration` on a resting offer.
+  final DateTime? expiration;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const TradeExecution({
+    required this.id,
+    required this.walletId,
+    required this.network,
+    required this.side,
+    required this.baseCurrency,
+    this.baseIssuer,
+    required this.quoteCurrency,
+    this.quoteIssuer,
+    required this.targetAmount,
+    required this.filledAmount,
+    required this.orderType,
+    required this.status,
+    this.lastError,
+    this.txHash,
+    this.offerSequence,
+    this.lastLedgerSequence,
+    this.lastLedgerIndex,
+    this.expiration,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['wallet_id'] = Variable<String>(walletId);
+    map['network'] = Variable<String>(network);
+    map['side'] = Variable<String>(side);
+    map['base_currency'] = Variable<String>(baseCurrency);
+    if (!nullToAbsent || baseIssuer != null) {
+      map['base_issuer'] = Variable<String>(baseIssuer);
+    }
+    map['quote_currency'] = Variable<String>(quoteCurrency);
+    if (!nullToAbsent || quoteIssuer != null) {
+      map['quote_issuer'] = Variable<String>(quoteIssuer);
+    }
+    map['target_amount'] = Variable<String>(targetAmount);
+    map['filled_amount'] = Variable<String>(filledAmount);
+    map['order_type'] = Variable<String>(orderType);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    if (!nullToAbsent || txHash != null) {
+      map['tx_hash'] = Variable<String>(txHash);
+    }
+    if (!nullToAbsent || offerSequence != null) {
+      map['offer_sequence'] = Variable<int>(offerSequence);
+    }
+    if (!nullToAbsent || lastLedgerSequence != null) {
+      map['last_ledger_sequence'] = Variable<int>(lastLedgerSequence);
+    }
+    if (!nullToAbsent || lastLedgerIndex != null) {
+      map['last_ledger_index'] = Variable<int>(lastLedgerIndex);
+    }
+    if (!nullToAbsent || expiration != null) {
+      map['expiration'] = Variable<DateTime>(expiration);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  TradeExecutionsCompanion toCompanion(bool nullToAbsent) {
+    return TradeExecutionsCompanion(
+      id: Value(id),
+      walletId: Value(walletId),
+      network: Value(network),
+      side: Value(side),
+      baseCurrency: Value(baseCurrency),
+      baseIssuer: baseIssuer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(baseIssuer),
+      quoteCurrency: Value(quoteCurrency),
+      quoteIssuer: quoteIssuer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quoteIssuer),
+      targetAmount: Value(targetAmount),
+      filledAmount: Value(filledAmount),
+      orderType: Value(orderType),
+      status: Value(status),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      txHash: txHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(txHash),
+      offerSequence: offerSequence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(offerSequence),
+      lastLedgerSequence: lastLedgerSequence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLedgerSequence),
+      lastLedgerIndex: lastLedgerIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLedgerIndex),
+      expiration: expiration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiration),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TradeExecution.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TradeExecution(
+      id: serializer.fromJson<String>(json['id']),
+      walletId: serializer.fromJson<String>(json['walletId']),
+      network: serializer.fromJson<String>(json['network']),
+      side: serializer.fromJson<String>(json['side']),
+      baseCurrency: serializer.fromJson<String>(json['baseCurrency']),
+      baseIssuer: serializer.fromJson<String?>(json['baseIssuer']),
+      quoteCurrency: serializer.fromJson<String>(json['quoteCurrency']),
+      quoteIssuer: serializer.fromJson<String?>(json['quoteIssuer']),
+      targetAmount: serializer.fromJson<String>(json['targetAmount']),
+      filledAmount: serializer.fromJson<String>(json['filledAmount']),
+      orderType: serializer.fromJson<String>(json['orderType']),
+      status: serializer.fromJson<String>(json['status']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      txHash: serializer.fromJson<String?>(json['txHash']),
+      offerSequence: serializer.fromJson<int?>(json['offerSequence']),
+      lastLedgerSequence: serializer.fromJson<int?>(json['lastLedgerSequence']),
+      lastLedgerIndex: serializer.fromJson<int?>(json['lastLedgerIndex']),
+      expiration: serializer.fromJson<DateTime?>(json['expiration']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'walletId': serializer.toJson<String>(walletId),
+      'network': serializer.toJson<String>(network),
+      'side': serializer.toJson<String>(side),
+      'baseCurrency': serializer.toJson<String>(baseCurrency),
+      'baseIssuer': serializer.toJson<String?>(baseIssuer),
+      'quoteCurrency': serializer.toJson<String>(quoteCurrency),
+      'quoteIssuer': serializer.toJson<String?>(quoteIssuer),
+      'targetAmount': serializer.toJson<String>(targetAmount),
+      'filledAmount': serializer.toJson<String>(filledAmount),
+      'orderType': serializer.toJson<String>(orderType),
+      'status': serializer.toJson<String>(status),
+      'lastError': serializer.toJson<String?>(lastError),
+      'txHash': serializer.toJson<String?>(txHash),
+      'offerSequence': serializer.toJson<int?>(offerSequence),
+      'lastLedgerSequence': serializer.toJson<int?>(lastLedgerSequence),
+      'lastLedgerIndex': serializer.toJson<int?>(lastLedgerIndex),
+      'expiration': serializer.toJson<DateTime?>(expiration),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  TradeExecution copyWith({
+    String? id,
+    String? walletId,
+    String? network,
+    String? side,
+    String? baseCurrency,
+    Value<String?> baseIssuer = const Value.absent(),
+    String? quoteCurrency,
+    Value<String?> quoteIssuer = const Value.absent(),
+    String? targetAmount,
+    String? filledAmount,
+    String? orderType,
+    String? status,
+    Value<String?> lastError = const Value.absent(),
+    Value<String?> txHash = const Value.absent(),
+    Value<int?> offerSequence = const Value.absent(),
+    Value<int?> lastLedgerSequence = const Value.absent(),
+    Value<int?> lastLedgerIndex = const Value.absent(),
+    Value<DateTime?> expiration = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => TradeExecution(
+    id: id ?? this.id,
+    walletId: walletId ?? this.walletId,
+    network: network ?? this.network,
+    side: side ?? this.side,
+    baseCurrency: baseCurrency ?? this.baseCurrency,
+    baseIssuer: baseIssuer.present ? baseIssuer.value : this.baseIssuer,
+    quoteCurrency: quoteCurrency ?? this.quoteCurrency,
+    quoteIssuer: quoteIssuer.present ? quoteIssuer.value : this.quoteIssuer,
+    targetAmount: targetAmount ?? this.targetAmount,
+    filledAmount: filledAmount ?? this.filledAmount,
+    orderType: orderType ?? this.orderType,
+    status: status ?? this.status,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    txHash: txHash.present ? txHash.value : this.txHash,
+    offerSequence: offerSequence.present
+        ? offerSequence.value
+        : this.offerSequence,
+    lastLedgerSequence: lastLedgerSequence.present
+        ? lastLedgerSequence.value
+        : this.lastLedgerSequence,
+    lastLedgerIndex: lastLedgerIndex.present
+        ? lastLedgerIndex.value
+        : this.lastLedgerIndex,
+    expiration: expiration.present ? expiration.value : this.expiration,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  TradeExecution copyWithCompanion(TradeExecutionsCompanion data) {
+    return TradeExecution(
+      id: data.id.present ? data.id.value : this.id,
+      walletId: data.walletId.present ? data.walletId.value : this.walletId,
+      network: data.network.present ? data.network.value : this.network,
+      side: data.side.present ? data.side.value : this.side,
+      baseCurrency: data.baseCurrency.present
+          ? data.baseCurrency.value
+          : this.baseCurrency,
+      baseIssuer: data.baseIssuer.present
+          ? data.baseIssuer.value
+          : this.baseIssuer,
+      quoteCurrency: data.quoteCurrency.present
+          ? data.quoteCurrency.value
+          : this.quoteCurrency,
+      quoteIssuer: data.quoteIssuer.present
+          ? data.quoteIssuer.value
+          : this.quoteIssuer,
+      targetAmount: data.targetAmount.present
+          ? data.targetAmount.value
+          : this.targetAmount,
+      filledAmount: data.filledAmount.present
+          ? data.filledAmount.value
+          : this.filledAmount,
+      orderType: data.orderType.present ? data.orderType.value : this.orderType,
+      status: data.status.present ? data.status.value : this.status,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      txHash: data.txHash.present ? data.txHash.value : this.txHash,
+      offerSequence: data.offerSequence.present
+          ? data.offerSequence.value
+          : this.offerSequence,
+      lastLedgerSequence: data.lastLedgerSequence.present
+          ? data.lastLedgerSequence.value
+          : this.lastLedgerSequence,
+      lastLedgerIndex: data.lastLedgerIndex.present
+          ? data.lastLedgerIndex.value
+          : this.lastLedgerIndex,
+      expiration: data.expiration.present
+          ? data.expiration.value
+          : this.expiration,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradeExecution(')
+          ..write('id: $id, ')
+          ..write('walletId: $walletId, ')
+          ..write('network: $network, ')
+          ..write('side: $side, ')
+          ..write('baseCurrency: $baseCurrency, ')
+          ..write('baseIssuer: $baseIssuer, ')
+          ..write('quoteCurrency: $quoteCurrency, ')
+          ..write('quoteIssuer: $quoteIssuer, ')
+          ..write('targetAmount: $targetAmount, ')
+          ..write('filledAmount: $filledAmount, ')
+          ..write('orderType: $orderType, ')
+          ..write('status: $status, ')
+          ..write('lastError: $lastError, ')
+          ..write('txHash: $txHash, ')
+          ..write('offerSequence: $offerSequence, ')
+          ..write('lastLedgerSequence: $lastLedgerSequence, ')
+          ..write('lastLedgerIndex: $lastLedgerIndex, ')
+          ..write('expiration: $expiration, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    walletId,
+    network,
+    side,
+    baseCurrency,
+    baseIssuer,
+    quoteCurrency,
+    quoteIssuer,
+    targetAmount,
+    filledAmount,
+    orderType,
+    status,
+    lastError,
+    txHash,
+    offerSequence,
+    lastLedgerSequence,
+    lastLedgerIndex,
+    expiration,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TradeExecution &&
+          other.id == this.id &&
+          other.walletId == this.walletId &&
+          other.network == this.network &&
+          other.side == this.side &&
+          other.baseCurrency == this.baseCurrency &&
+          other.baseIssuer == this.baseIssuer &&
+          other.quoteCurrency == this.quoteCurrency &&
+          other.quoteIssuer == this.quoteIssuer &&
+          other.targetAmount == this.targetAmount &&
+          other.filledAmount == this.filledAmount &&
+          other.orderType == this.orderType &&
+          other.status == this.status &&
+          other.lastError == this.lastError &&
+          other.txHash == this.txHash &&
+          other.offerSequence == this.offerSequence &&
+          other.lastLedgerSequence == this.lastLedgerSequence &&
+          other.lastLedgerIndex == this.lastLedgerIndex &&
+          other.expiration == this.expiration &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TradeExecutionsCompanion extends UpdateCompanion<TradeExecution> {
+  final Value<String> id;
+  final Value<String> walletId;
+  final Value<String> network;
+  final Value<String> side;
+  final Value<String> baseCurrency;
+  final Value<String?> baseIssuer;
+  final Value<String> quoteCurrency;
+  final Value<String?> quoteIssuer;
+  final Value<String> targetAmount;
+  final Value<String> filledAmount;
+  final Value<String> orderType;
+  final Value<String> status;
+  final Value<String?> lastError;
+  final Value<String?> txHash;
+  final Value<int?> offerSequence;
+  final Value<int?> lastLedgerSequence;
+  final Value<int?> lastLedgerIndex;
+  final Value<DateTime?> expiration;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const TradeExecutionsCompanion({
+    this.id = const Value.absent(),
+    this.walletId = const Value.absent(),
+    this.network = const Value.absent(),
+    this.side = const Value.absent(),
+    this.baseCurrency = const Value.absent(),
+    this.baseIssuer = const Value.absent(),
+    this.quoteCurrency = const Value.absent(),
+    this.quoteIssuer = const Value.absent(),
+    this.targetAmount = const Value.absent(),
+    this.filledAmount = const Value.absent(),
+    this.orderType = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.txHash = const Value.absent(),
+    this.offerSequence = const Value.absent(),
+    this.lastLedgerSequence = const Value.absent(),
+    this.lastLedgerIndex = const Value.absent(),
+    this.expiration = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TradeExecutionsCompanion.insert({
+    required String id,
+    required String walletId,
+    required String network,
+    required String side,
+    required String baseCurrency,
+    this.baseIssuer = const Value.absent(),
+    required String quoteCurrency,
+    this.quoteIssuer = const Value.absent(),
+    required String targetAmount,
+    this.filledAmount = const Value.absent(),
+    required String orderType,
+    required String status,
+    this.lastError = const Value.absent(),
+    this.txHash = const Value.absent(),
+    this.offerSequence = const Value.absent(),
+    this.lastLedgerSequence = const Value.absent(),
+    this.lastLedgerIndex = const Value.absent(),
+    this.expiration = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       walletId = Value(walletId),
+       network = Value(network),
+       side = Value(side),
+       baseCurrency = Value(baseCurrency),
+       quoteCurrency = Value(quoteCurrency),
+       targetAmount = Value(targetAmount),
+       orderType = Value(orderType),
+       status = Value(status),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<TradeExecution> custom({
+    Expression<String>? id,
+    Expression<String>? walletId,
+    Expression<String>? network,
+    Expression<String>? side,
+    Expression<String>? baseCurrency,
+    Expression<String>? baseIssuer,
+    Expression<String>? quoteCurrency,
+    Expression<String>? quoteIssuer,
+    Expression<String>? targetAmount,
+    Expression<String>? filledAmount,
+    Expression<String>? orderType,
+    Expression<String>? status,
+    Expression<String>? lastError,
+    Expression<String>? txHash,
+    Expression<int>? offerSequence,
+    Expression<int>? lastLedgerSequence,
+    Expression<int>? lastLedgerIndex,
+    Expression<DateTime>? expiration,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (walletId != null) 'wallet_id': walletId,
+      if (network != null) 'network': network,
+      if (side != null) 'side': side,
+      if (baseCurrency != null) 'base_currency': baseCurrency,
+      if (baseIssuer != null) 'base_issuer': baseIssuer,
+      if (quoteCurrency != null) 'quote_currency': quoteCurrency,
+      if (quoteIssuer != null) 'quote_issuer': quoteIssuer,
+      if (targetAmount != null) 'target_amount': targetAmount,
+      if (filledAmount != null) 'filled_amount': filledAmount,
+      if (orderType != null) 'order_type': orderType,
+      if (status != null) 'status': status,
+      if (lastError != null) 'last_error': lastError,
+      if (txHash != null) 'tx_hash': txHash,
+      if (offerSequence != null) 'offer_sequence': offerSequence,
+      if (lastLedgerSequence != null)
+        'last_ledger_sequence': lastLedgerSequence,
+      if (lastLedgerIndex != null) 'last_ledger_index': lastLedgerIndex,
+      if (expiration != null) 'expiration': expiration,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TradeExecutionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? walletId,
+    Value<String>? network,
+    Value<String>? side,
+    Value<String>? baseCurrency,
+    Value<String?>? baseIssuer,
+    Value<String>? quoteCurrency,
+    Value<String?>? quoteIssuer,
+    Value<String>? targetAmount,
+    Value<String>? filledAmount,
+    Value<String>? orderType,
+    Value<String>? status,
+    Value<String?>? lastError,
+    Value<String?>? txHash,
+    Value<int?>? offerSequence,
+    Value<int?>? lastLedgerSequence,
+    Value<int?>? lastLedgerIndex,
+    Value<DateTime?>? expiration,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TradeExecutionsCompanion(
+      id: id ?? this.id,
+      walletId: walletId ?? this.walletId,
+      network: network ?? this.network,
+      side: side ?? this.side,
+      baseCurrency: baseCurrency ?? this.baseCurrency,
+      baseIssuer: baseIssuer ?? this.baseIssuer,
+      quoteCurrency: quoteCurrency ?? this.quoteCurrency,
+      quoteIssuer: quoteIssuer ?? this.quoteIssuer,
+      targetAmount: targetAmount ?? this.targetAmount,
+      filledAmount: filledAmount ?? this.filledAmount,
+      orderType: orderType ?? this.orderType,
+      status: status ?? this.status,
+      lastError: lastError ?? this.lastError,
+      txHash: txHash ?? this.txHash,
+      offerSequence: offerSequence ?? this.offerSequence,
+      lastLedgerSequence: lastLedgerSequence ?? this.lastLedgerSequence,
+      lastLedgerIndex: lastLedgerIndex ?? this.lastLedgerIndex,
+      expiration: expiration ?? this.expiration,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (walletId.present) {
+      map['wallet_id'] = Variable<String>(walletId.value);
+    }
+    if (network.present) {
+      map['network'] = Variable<String>(network.value);
+    }
+    if (side.present) {
+      map['side'] = Variable<String>(side.value);
+    }
+    if (baseCurrency.present) {
+      map['base_currency'] = Variable<String>(baseCurrency.value);
+    }
+    if (baseIssuer.present) {
+      map['base_issuer'] = Variable<String>(baseIssuer.value);
+    }
+    if (quoteCurrency.present) {
+      map['quote_currency'] = Variable<String>(quoteCurrency.value);
+    }
+    if (quoteIssuer.present) {
+      map['quote_issuer'] = Variable<String>(quoteIssuer.value);
+    }
+    if (targetAmount.present) {
+      map['target_amount'] = Variable<String>(targetAmount.value);
+    }
+    if (filledAmount.present) {
+      map['filled_amount'] = Variable<String>(filledAmount.value);
+    }
+    if (orderType.present) {
+      map['order_type'] = Variable<String>(orderType.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (txHash.present) {
+      map['tx_hash'] = Variable<String>(txHash.value);
+    }
+    if (offerSequence.present) {
+      map['offer_sequence'] = Variable<int>(offerSequence.value);
+    }
+    if (lastLedgerSequence.present) {
+      map['last_ledger_sequence'] = Variable<int>(lastLedgerSequence.value);
+    }
+    if (lastLedgerIndex.present) {
+      map['last_ledger_index'] = Variable<int>(lastLedgerIndex.value);
+    }
+    if (expiration.present) {
+      map['expiration'] = Variable<DateTime>(expiration.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradeExecutionsCompanion(')
+          ..write('id: $id, ')
+          ..write('walletId: $walletId, ')
+          ..write('network: $network, ')
+          ..write('side: $side, ')
+          ..write('baseCurrency: $baseCurrency, ')
+          ..write('baseIssuer: $baseIssuer, ')
+          ..write('quoteCurrency: $quoteCurrency, ')
+          ..write('quoteIssuer: $quoteIssuer, ')
+          ..write('targetAmount: $targetAmount, ')
+          ..write('filledAmount: $filledAmount, ')
+          ..write('orderType: $orderType, ')
+          ..write('status: $status, ')
+          ..write('lastError: $lastError, ')
+          ..write('txHash: $txHash, ')
+          ..write('offerSequence: $offerSequence, ')
+          ..write('lastLedgerSequence: $lastLedgerSequence, ')
+          ..write('lastLedgerIndex: $lastLedgerIndex, ')
+          ..write('expiration: $expiration, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TradeFillsTable extends TradeFills
+    with TableInfo<$TradeFillsTable, TradeFill> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TradeFillsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _executionIdMeta = const VerificationMeta(
+    'executionId',
+  );
+  @override
+  late final GeneratedColumn<String> executionId = GeneratedColumn<String>(
+    'execution_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _txHashMeta = const VerificationMeta('txHash');
+  @override
+  late final GeneratedColumn<String> txHash = GeneratedColumn<String>(
+    'tx_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ledgerIndexMeta = const VerificationMeta(
+    'ledgerIndex',
+  );
+  @override
+  late final GeneratedColumn<int> ledgerIndex = GeneratedColumn<int>(
+    'ledger_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _filledBaseMeta = const VerificationMeta(
+    'filledBase',
+  );
+  @override
+  late final GeneratedColumn<String> filledBase = GeneratedColumn<String>(
+    'filled_base',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _filledQuoteMeta = const VerificationMeta(
+    'filledQuote',
+  );
+  @override
+  late final GeneratedColumn<String> filledQuote = GeneratedColumn<String>(
+    'filled_quote',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateMeta = const VerificationMeta('rate');
+  @override
+  late final GeneratedColumn<String> rate = GeneratedColumn<String>(
+    'rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feeDropsMeta = const VerificationMeta(
+    'feeDrops',
+  );
+  @override
+  late final GeneratedColumn<String> feeDrops = GeneratedColumn<String>(
+    'fee_drops',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    executionId,
+    txHash,
+    ledgerIndex,
+    filledBase,
+    filledQuote,
+    rate,
+    feeDrops,
+    date,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'trade_fills';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TradeFill> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('execution_id')) {
+      context.handle(
+        _executionIdMeta,
+        executionId.isAcceptableOrUnknown(
+          data['execution_id']!,
+          _executionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_executionIdMeta);
+    }
+    if (data.containsKey('tx_hash')) {
+      context.handle(
+        _txHashMeta,
+        txHash.isAcceptableOrUnknown(data['tx_hash']!, _txHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_txHashMeta);
+    }
+    if (data.containsKey('ledger_index')) {
+      context.handle(
+        _ledgerIndexMeta,
+        ledgerIndex.isAcceptableOrUnknown(
+          data['ledger_index']!,
+          _ledgerIndexMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ledgerIndexMeta);
+    }
+    if (data.containsKey('filled_base')) {
+      context.handle(
+        _filledBaseMeta,
+        filledBase.isAcceptableOrUnknown(data['filled_base']!, _filledBaseMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filledBaseMeta);
+    }
+    if (data.containsKey('filled_quote')) {
+      context.handle(
+        _filledQuoteMeta,
+        filledQuote.isAcceptableOrUnknown(
+          data['filled_quote']!,
+          _filledQuoteMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_filledQuoteMeta);
+    }
+    if (data.containsKey('rate')) {
+      context.handle(
+        _rateMeta,
+        rate.isAcceptableOrUnknown(data['rate']!, _rateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rateMeta);
+    }
+    if (data.containsKey('fee_drops')) {
+      context.handle(
+        _feeDropsMeta,
+        feeDrops.isAcceptableOrUnknown(data['fee_drops']!, _feeDropsMeta),
+      );
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {executionId, txHash};
+  @override
+  TradeFill map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TradeFill(
+      executionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}execution_id'],
+      )!,
+      txHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tx_hash'],
+      )!,
+      ledgerIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ledger_index'],
+      )!,
+      filledBase: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}filled_base'],
+      )!,
+      filledQuote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}filled_quote'],
+      )!,
+      rate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate'],
+      )!,
+      feeDrops: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fee_drops'],
+      ),
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+    );
+  }
+
+  @override
+  $TradeFillsTable createAlias(String alias) {
+    return $TradeFillsTable(attachedDatabase, alias);
+  }
+}
+
+class TradeFill extends DataClass implements Insertable<TradeFill> {
+  final String executionId;
+  final String txHash;
+  final int ledgerIndex;
+
+  /// Amounts actually exchanged in this fill, as ledger-reported strings.
+  final String filledBase;
+  final String filledQuote;
+
+  /// Executed rate for this fill (quote per base), as a decimal string.
+  final String rate;
+  final String? feeDrops;
+  final DateTime date;
+  const TradeFill({
+    required this.executionId,
+    required this.txHash,
+    required this.ledgerIndex,
+    required this.filledBase,
+    required this.filledQuote,
+    required this.rate,
+    this.feeDrops,
+    required this.date,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['execution_id'] = Variable<String>(executionId);
+    map['tx_hash'] = Variable<String>(txHash);
+    map['ledger_index'] = Variable<int>(ledgerIndex);
+    map['filled_base'] = Variable<String>(filledBase);
+    map['filled_quote'] = Variable<String>(filledQuote);
+    map['rate'] = Variable<String>(rate);
+    if (!nullToAbsent || feeDrops != null) {
+      map['fee_drops'] = Variable<String>(feeDrops);
+    }
+    map['date'] = Variable<DateTime>(date);
+    return map;
+  }
+
+  TradeFillsCompanion toCompanion(bool nullToAbsent) {
+    return TradeFillsCompanion(
+      executionId: Value(executionId),
+      txHash: Value(txHash),
+      ledgerIndex: Value(ledgerIndex),
+      filledBase: Value(filledBase),
+      filledQuote: Value(filledQuote),
+      rate: Value(rate),
+      feeDrops: feeDrops == null && nullToAbsent
+          ? const Value.absent()
+          : Value(feeDrops),
+      date: Value(date),
+    );
+  }
+
+  factory TradeFill.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TradeFill(
+      executionId: serializer.fromJson<String>(json['executionId']),
+      txHash: serializer.fromJson<String>(json['txHash']),
+      ledgerIndex: serializer.fromJson<int>(json['ledgerIndex']),
+      filledBase: serializer.fromJson<String>(json['filledBase']),
+      filledQuote: serializer.fromJson<String>(json['filledQuote']),
+      rate: serializer.fromJson<String>(json['rate']),
+      feeDrops: serializer.fromJson<String?>(json['feeDrops']),
+      date: serializer.fromJson<DateTime>(json['date']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'executionId': serializer.toJson<String>(executionId),
+      'txHash': serializer.toJson<String>(txHash),
+      'ledgerIndex': serializer.toJson<int>(ledgerIndex),
+      'filledBase': serializer.toJson<String>(filledBase),
+      'filledQuote': serializer.toJson<String>(filledQuote),
+      'rate': serializer.toJson<String>(rate),
+      'feeDrops': serializer.toJson<String?>(feeDrops),
+      'date': serializer.toJson<DateTime>(date),
+    };
+  }
+
+  TradeFill copyWith({
+    String? executionId,
+    String? txHash,
+    int? ledgerIndex,
+    String? filledBase,
+    String? filledQuote,
+    String? rate,
+    Value<String?> feeDrops = const Value.absent(),
+    DateTime? date,
+  }) => TradeFill(
+    executionId: executionId ?? this.executionId,
+    txHash: txHash ?? this.txHash,
+    ledgerIndex: ledgerIndex ?? this.ledgerIndex,
+    filledBase: filledBase ?? this.filledBase,
+    filledQuote: filledQuote ?? this.filledQuote,
+    rate: rate ?? this.rate,
+    feeDrops: feeDrops.present ? feeDrops.value : this.feeDrops,
+    date: date ?? this.date,
+  );
+  TradeFill copyWithCompanion(TradeFillsCompanion data) {
+    return TradeFill(
+      executionId: data.executionId.present
+          ? data.executionId.value
+          : this.executionId,
+      txHash: data.txHash.present ? data.txHash.value : this.txHash,
+      ledgerIndex: data.ledgerIndex.present
+          ? data.ledgerIndex.value
+          : this.ledgerIndex,
+      filledBase: data.filledBase.present
+          ? data.filledBase.value
+          : this.filledBase,
+      filledQuote: data.filledQuote.present
+          ? data.filledQuote.value
+          : this.filledQuote,
+      rate: data.rate.present ? data.rate.value : this.rate,
+      feeDrops: data.feeDrops.present ? data.feeDrops.value : this.feeDrops,
+      date: data.date.present ? data.date.value : this.date,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradeFill(')
+          ..write('executionId: $executionId, ')
+          ..write('txHash: $txHash, ')
+          ..write('ledgerIndex: $ledgerIndex, ')
+          ..write('filledBase: $filledBase, ')
+          ..write('filledQuote: $filledQuote, ')
+          ..write('rate: $rate, ')
+          ..write('feeDrops: $feeDrops, ')
+          ..write('date: $date')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    executionId,
+    txHash,
+    ledgerIndex,
+    filledBase,
+    filledQuote,
+    rate,
+    feeDrops,
+    date,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TradeFill &&
+          other.executionId == this.executionId &&
+          other.txHash == this.txHash &&
+          other.ledgerIndex == this.ledgerIndex &&
+          other.filledBase == this.filledBase &&
+          other.filledQuote == this.filledQuote &&
+          other.rate == this.rate &&
+          other.feeDrops == this.feeDrops &&
+          other.date == this.date);
+}
+
+class TradeFillsCompanion extends UpdateCompanion<TradeFill> {
+  final Value<String> executionId;
+  final Value<String> txHash;
+  final Value<int> ledgerIndex;
+  final Value<String> filledBase;
+  final Value<String> filledQuote;
+  final Value<String> rate;
+  final Value<String?> feeDrops;
+  final Value<DateTime> date;
+  final Value<int> rowid;
+  const TradeFillsCompanion({
+    this.executionId = const Value.absent(),
+    this.txHash = const Value.absent(),
+    this.ledgerIndex = const Value.absent(),
+    this.filledBase = const Value.absent(),
+    this.filledQuote = const Value.absent(),
+    this.rate = const Value.absent(),
+    this.feeDrops = const Value.absent(),
+    this.date = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TradeFillsCompanion.insert({
+    required String executionId,
+    required String txHash,
+    required int ledgerIndex,
+    required String filledBase,
+    required String filledQuote,
+    required String rate,
+    this.feeDrops = const Value.absent(),
+    required DateTime date,
+    this.rowid = const Value.absent(),
+  }) : executionId = Value(executionId),
+       txHash = Value(txHash),
+       ledgerIndex = Value(ledgerIndex),
+       filledBase = Value(filledBase),
+       filledQuote = Value(filledQuote),
+       rate = Value(rate),
+       date = Value(date);
+  static Insertable<TradeFill> custom({
+    Expression<String>? executionId,
+    Expression<String>? txHash,
+    Expression<int>? ledgerIndex,
+    Expression<String>? filledBase,
+    Expression<String>? filledQuote,
+    Expression<String>? rate,
+    Expression<String>? feeDrops,
+    Expression<DateTime>? date,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (executionId != null) 'execution_id': executionId,
+      if (txHash != null) 'tx_hash': txHash,
+      if (ledgerIndex != null) 'ledger_index': ledgerIndex,
+      if (filledBase != null) 'filled_base': filledBase,
+      if (filledQuote != null) 'filled_quote': filledQuote,
+      if (rate != null) 'rate': rate,
+      if (feeDrops != null) 'fee_drops': feeDrops,
+      if (date != null) 'date': date,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TradeFillsCompanion copyWith({
+    Value<String>? executionId,
+    Value<String>? txHash,
+    Value<int>? ledgerIndex,
+    Value<String>? filledBase,
+    Value<String>? filledQuote,
+    Value<String>? rate,
+    Value<String?>? feeDrops,
+    Value<DateTime>? date,
+    Value<int>? rowid,
+  }) {
+    return TradeFillsCompanion(
+      executionId: executionId ?? this.executionId,
+      txHash: txHash ?? this.txHash,
+      ledgerIndex: ledgerIndex ?? this.ledgerIndex,
+      filledBase: filledBase ?? this.filledBase,
+      filledQuote: filledQuote ?? this.filledQuote,
+      rate: rate ?? this.rate,
+      feeDrops: feeDrops ?? this.feeDrops,
+      date: date ?? this.date,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (executionId.present) {
+      map['execution_id'] = Variable<String>(executionId.value);
+    }
+    if (txHash.present) {
+      map['tx_hash'] = Variable<String>(txHash.value);
+    }
+    if (ledgerIndex.present) {
+      map['ledger_index'] = Variable<int>(ledgerIndex.value);
+    }
+    if (filledBase.present) {
+      map['filled_base'] = Variable<String>(filledBase.value);
+    }
+    if (filledQuote.present) {
+      map['filled_quote'] = Variable<String>(filledQuote.value);
+    }
+    if (rate.present) {
+      map['rate'] = Variable<String>(rate.value);
+    }
+    if (feeDrops.present) {
+      map['fee_drops'] = Variable<String>(feeDrops.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradeFillsCompanion(')
+          ..write('executionId: $executionId, ')
+          ..write('txHash: $txHash, ')
+          ..write('ledgerIndex: $ledgerIndex, ')
+          ..write('filledBase: $filledBase, ')
+          ..write('filledQuote: $filledQuote, ')
+          ..write('rate: $rate, ')
+          ..write('feeDrops: $feeDrops, ')
+          ..write('date: $date, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1774,6 +3477,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AppSettingsRowsTable appSettingsRows = $AppSettingsRowsTable(
     this,
   );
+  late final $TradeExecutionsTable tradeExecutions = $TradeExecutionsTable(
+    this,
+  );
+  late final $TradeFillsTable tradeFills = $TradeFillsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1783,6 +3490,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     balances,
     cachedTxs,
     appSettingsRows,
+    tradeExecutions,
+    tradeFills,
   ];
 }
 
@@ -1796,6 +3505,9 @@ typedef $$WalletsTableCreateCompanionBuilder =
       required String importMethod,
       required DateTime createdAt,
       Value<int> sortOrder,
+      Value<int?> accentColor,
+      Value<bool> useLedger,
+      Value<int> ledgerAccountIndex,
       Value<int> rowid,
     });
 typedef $$WalletsTableUpdateCompanionBuilder =
@@ -1808,6 +3520,9 @@ typedef $$WalletsTableUpdateCompanionBuilder =
       Value<String> importMethod,
       Value<DateTime> createdAt,
       Value<int> sortOrder,
+      Value<int?> accentColor,
+      Value<bool> useLedger,
+      Value<int> ledgerAccountIndex,
       Value<int> rowid,
     });
 
@@ -1857,6 +3572,21 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get accentColor => $composableBuilder(
+    column: $table.accentColor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get useLedger => $composableBuilder(
+    column: $table.useLedger,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ledgerAccountIndex => $composableBuilder(
+    column: $table.ledgerAccountIndex,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1909,6 +3639,21 @@ class $$WalletsTableOrderingComposer
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get accentColor => $composableBuilder(
+    column: $table.accentColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get useLedger => $composableBuilder(
+    column: $table.useLedger,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ledgerAccountIndex => $composableBuilder(
+    column: $table.ledgerAccountIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$WalletsTableAnnotationComposer
@@ -1947,6 +3692,19 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get accentColor => $composableBuilder(
+    column: $table.accentColor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get useLedger =>
+      $composableBuilder(column: $table.useLedger, builder: (column) => column);
+
+  GeneratedColumn<int> get ledgerAccountIndex => $composableBuilder(
+    column: $table.ledgerAccountIndex,
+    builder: (column) => column,
+  );
 }
 
 class $$WalletsTableTableManager
@@ -1985,6 +3743,9 @@ class $$WalletsTableTableManager
                 Value<String> importMethod = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<int?> accentColor = const Value.absent(),
+                Value<bool> useLedger = const Value.absent(),
+                Value<int> ledgerAccountIndex = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WalletsCompanion(
                 id: id,
@@ -1995,6 +3756,9 @@ class $$WalletsTableTableManager
                 importMethod: importMethod,
                 createdAt: createdAt,
                 sortOrder: sortOrder,
+                accentColor: accentColor,
+                useLedger: useLedger,
+                ledgerAccountIndex: ledgerAccountIndex,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2007,6 +3771,9 @@ class $$WalletsTableTableManager
                 required String importMethod,
                 required DateTime createdAt,
                 Value<int> sortOrder = const Value.absent(),
+                Value<int?> accentColor = const Value.absent(),
+                Value<bool> useLedger = const Value.absent(),
+                Value<int> ledgerAccountIndex = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WalletsCompanion.insert(
                 id: id,
@@ -2017,6 +3784,9 @@ class $$WalletsTableTableManager
                 importMethod: importMethod,
                 createdAt: createdAt,
                 sortOrder: sortOrder,
+                accentColor: accentColor,
+                useLedger: useLedger,
+                ledgerAccountIndex: ledgerAccountIndex,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2641,6 +4411,779 @@ typedef $$AppSettingsRowsTableProcessedTableManager =
       AppSettingsRow,
       PrefetchHooks Function()
     >;
+typedef $$TradeExecutionsTableCreateCompanionBuilder =
+    TradeExecutionsCompanion Function({
+      required String id,
+      required String walletId,
+      required String network,
+      required String side,
+      required String baseCurrency,
+      Value<String?> baseIssuer,
+      required String quoteCurrency,
+      Value<String?> quoteIssuer,
+      required String targetAmount,
+      Value<String> filledAmount,
+      required String orderType,
+      required String status,
+      Value<String?> lastError,
+      Value<String?> txHash,
+      Value<int?> offerSequence,
+      Value<int?> lastLedgerSequence,
+      Value<int?> lastLedgerIndex,
+      Value<DateTime?> expiration,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TradeExecutionsTableUpdateCompanionBuilder =
+    TradeExecutionsCompanion Function({
+      Value<String> id,
+      Value<String> walletId,
+      Value<String> network,
+      Value<String> side,
+      Value<String> baseCurrency,
+      Value<String?> baseIssuer,
+      Value<String> quoteCurrency,
+      Value<String?> quoteIssuer,
+      Value<String> targetAmount,
+      Value<String> filledAmount,
+      Value<String> orderType,
+      Value<String> status,
+      Value<String?> lastError,
+      Value<String?> txHash,
+      Value<int?> offerSequence,
+      Value<int?> lastLedgerSequence,
+      Value<int?> lastLedgerIndex,
+      Value<DateTime?> expiration,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TradeExecutionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TradeExecutionsTable> {
+  $$TradeExecutionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get network => $composableBuilder(
+    column: $table.network,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get side => $composableBuilder(
+    column: $table.side,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseIssuer => $composableBuilder(
+    column: $table.baseIssuer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get quoteCurrency => $composableBuilder(
+    column: $table.quoteCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get quoteIssuer => $composableBuilder(
+    column: $table.quoteIssuer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetAmount => $composableBuilder(
+    column: $table.targetAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filledAmount => $composableBuilder(
+    column: $table.filledAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get orderType => $composableBuilder(
+    column: $table.orderType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get offerSequence => $composableBuilder(
+    column: $table.offerSequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastLedgerIndex => $composableBuilder(
+    column: $table.lastLedgerIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TradeExecutionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TradeExecutionsTable> {
+  $$TradeExecutionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get network => $composableBuilder(
+    column: $table.network,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get side => $composableBuilder(
+    column: $table.side,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseIssuer => $composableBuilder(
+    column: $table.baseIssuer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get quoteCurrency => $composableBuilder(
+    column: $table.quoteCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get quoteIssuer => $composableBuilder(
+    column: $table.quoteIssuer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetAmount => $composableBuilder(
+    column: $table.targetAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filledAmount => $composableBuilder(
+    column: $table.filledAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get orderType => $composableBuilder(
+    column: $table.orderType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get offerSequence => $composableBuilder(
+    column: $table.offerSequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastLedgerIndex => $composableBuilder(
+    column: $table.lastLedgerIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TradeExecutionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TradeExecutionsTable> {
+  $$TradeExecutionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get walletId =>
+      $composableBuilder(column: $table.walletId, builder: (column) => column);
+
+  GeneratedColumn<String> get network =>
+      $composableBuilder(column: $table.network, builder: (column) => column);
+
+  GeneratedColumn<String> get side =>
+      $composableBuilder(column: $table.side, builder: (column) => column);
+
+  GeneratedColumn<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get baseIssuer => $composableBuilder(
+    column: $table.baseIssuer,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get quoteCurrency => $composableBuilder(
+    column: $table.quoteCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get quoteIssuer => $composableBuilder(
+    column: $table.quoteIssuer,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetAmount => $composableBuilder(
+    column: $table.targetAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get filledAmount => $composableBuilder(
+    column: $table.filledAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get orderType =>
+      $composableBuilder(column: $table.orderType, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<String> get txHash =>
+      $composableBuilder(column: $table.txHash, builder: (column) => column);
+
+  GeneratedColumn<int> get offerSequence => $composableBuilder(
+    column: $table.offerSequence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastLedgerIndex => $composableBuilder(
+    column: $table.lastLedgerIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TradeExecutionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TradeExecutionsTable,
+          TradeExecution,
+          $$TradeExecutionsTableFilterComposer,
+          $$TradeExecutionsTableOrderingComposer,
+          $$TradeExecutionsTableAnnotationComposer,
+          $$TradeExecutionsTableCreateCompanionBuilder,
+          $$TradeExecutionsTableUpdateCompanionBuilder,
+          (
+            TradeExecution,
+            BaseReferences<
+              _$AppDatabase,
+              $TradeExecutionsTable,
+              TradeExecution
+            >,
+          ),
+          TradeExecution,
+          PrefetchHooks Function()
+        > {
+  $$TradeExecutionsTableTableManager(
+    _$AppDatabase db,
+    $TradeExecutionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TradeExecutionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TradeExecutionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TradeExecutionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> walletId = const Value.absent(),
+                Value<String> network = const Value.absent(),
+                Value<String> side = const Value.absent(),
+                Value<String> baseCurrency = const Value.absent(),
+                Value<String?> baseIssuer = const Value.absent(),
+                Value<String> quoteCurrency = const Value.absent(),
+                Value<String?> quoteIssuer = const Value.absent(),
+                Value<String> targetAmount = const Value.absent(),
+                Value<String> filledAmount = const Value.absent(),
+                Value<String> orderType = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<String?> txHash = const Value.absent(),
+                Value<int?> offerSequence = const Value.absent(),
+                Value<int?> lastLedgerSequence = const Value.absent(),
+                Value<int?> lastLedgerIndex = const Value.absent(),
+                Value<DateTime?> expiration = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TradeExecutionsCompanion(
+                id: id,
+                walletId: walletId,
+                network: network,
+                side: side,
+                baseCurrency: baseCurrency,
+                baseIssuer: baseIssuer,
+                quoteCurrency: quoteCurrency,
+                quoteIssuer: quoteIssuer,
+                targetAmount: targetAmount,
+                filledAmount: filledAmount,
+                orderType: orderType,
+                status: status,
+                lastError: lastError,
+                txHash: txHash,
+                offerSequence: offerSequence,
+                lastLedgerSequence: lastLedgerSequence,
+                lastLedgerIndex: lastLedgerIndex,
+                expiration: expiration,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String walletId,
+                required String network,
+                required String side,
+                required String baseCurrency,
+                Value<String?> baseIssuer = const Value.absent(),
+                required String quoteCurrency,
+                Value<String?> quoteIssuer = const Value.absent(),
+                required String targetAmount,
+                Value<String> filledAmount = const Value.absent(),
+                required String orderType,
+                required String status,
+                Value<String?> lastError = const Value.absent(),
+                Value<String?> txHash = const Value.absent(),
+                Value<int?> offerSequence = const Value.absent(),
+                Value<int?> lastLedgerSequence = const Value.absent(),
+                Value<int?> lastLedgerIndex = const Value.absent(),
+                Value<DateTime?> expiration = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TradeExecutionsCompanion.insert(
+                id: id,
+                walletId: walletId,
+                network: network,
+                side: side,
+                baseCurrency: baseCurrency,
+                baseIssuer: baseIssuer,
+                quoteCurrency: quoteCurrency,
+                quoteIssuer: quoteIssuer,
+                targetAmount: targetAmount,
+                filledAmount: filledAmount,
+                orderType: orderType,
+                status: status,
+                lastError: lastError,
+                txHash: txHash,
+                offerSequence: offerSequence,
+                lastLedgerSequence: lastLedgerSequence,
+                lastLedgerIndex: lastLedgerIndex,
+                expiration: expiration,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TradeExecutionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TradeExecutionsTable,
+      TradeExecution,
+      $$TradeExecutionsTableFilterComposer,
+      $$TradeExecutionsTableOrderingComposer,
+      $$TradeExecutionsTableAnnotationComposer,
+      $$TradeExecutionsTableCreateCompanionBuilder,
+      $$TradeExecutionsTableUpdateCompanionBuilder,
+      (
+        TradeExecution,
+        BaseReferences<_$AppDatabase, $TradeExecutionsTable, TradeExecution>,
+      ),
+      TradeExecution,
+      PrefetchHooks Function()
+    >;
+typedef $$TradeFillsTableCreateCompanionBuilder =
+    TradeFillsCompanion Function({
+      required String executionId,
+      required String txHash,
+      required int ledgerIndex,
+      required String filledBase,
+      required String filledQuote,
+      required String rate,
+      Value<String?> feeDrops,
+      required DateTime date,
+      Value<int> rowid,
+    });
+typedef $$TradeFillsTableUpdateCompanionBuilder =
+    TradeFillsCompanion Function({
+      Value<String> executionId,
+      Value<String> txHash,
+      Value<int> ledgerIndex,
+      Value<String> filledBase,
+      Value<String> filledQuote,
+      Value<String> rate,
+      Value<String?> feeDrops,
+      Value<DateTime> date,
+      Value<int> rowid,
+    });
+
+class $$TradeFillsTableFilterComposer
+    extends Composer<_$AppDatabase, $TradeFillsTable> {
+  $$TradeFillsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get executionId => $composableBuilder(
+    column: $table.executionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ledgerIndex => $composableBuilder(
+    column: $table.ledgerIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filledBase => $composableBuilder(
+    column: $table.filledBase,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filledQuote => $composableBuilder(
+    column: $table.filledQuote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rate => $composableBuilder(
+    column: $table.rate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get feeDrops => $composableBuilder(
+    column: $table.feeDrops,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TradeFillsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TradeFillsTable> {
+  $$TradeFillsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get executionId => $composableBuilder(
+    column: $table.executionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ledgerIndex => $composableBuilder(
+    column: $table.ledgerIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filledBase => $composableBuilder(
+    column: $table.filledBase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filledQuote => $composableBuilder(
+    column: $table.filledQuote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rate => $composableBuilder(
+    column: $table.rate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get feeDrops => $composableBuilder(
+    column: $table.feeDrops,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TradeFillsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TradeFillsTable> {
+  $$TradeFillsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get executionId => $composableBuilder(
+    column: $table.executionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get txHash =>
+      $composableBuilder(column: $table.txHash, builder: (column) => column);
+
+  GeneratedColumn<int> get ledgerIndex => $composableBuilder(
+    column: $table.ledgerIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get filledBase => $composableBuilder(
+    column: $table.filledBase,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get filledQuote => $composableBuilder(
+    column: $table.filledQuote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rate =>
+      $composableBuilder(column: $table.rate, builder: (column) => column);
+
+  GeneratedColumn<String> get feeDrops =>
+      $composableBuilder(column: $table.feeDrops, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+}
+
+class $$TradeFillsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TradeFillsTable,
+          TradeFill,
+          $$TradeFillsTableFilterComposer,
+          $$TradeFillsTableOrderingComposer,
+          $$TradeFillsTableAnnotationComposer,
+          $$TradeFillsTableCreateCompanionBuilder,
+          $$TradeFillsTableUpdateCompanionBuilder,
+          (
+            TradeFill,
+            BaseReferences<_$AppDatabase, $TradeFillsTable, TradeFill>,
+          ),
+          TradeFill,
+          PrefetchHooks Function()
+        > {
+  $$TradeFillsTableTableManager(_$AppDatabase db, $TradeFillsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TradeFillsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TradeFillsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TradeFillsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> executionId = const Value.absent(),
+                Value<String> txHash = const Value.absent(),
+                Value<int> ledgerIndex = const Value.absent(),
+                Value<String> filledBase = const Value.absent(),
+                Value<String> filledQuote = const Value.absent(),
+                Value<String> rate = const Value.absent(),
+                Value<String?> feeDrops = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TradeFillsCompanion(
+                executionId: executionId,
+                txHash: txHash,
+                ledgerIndex: ledgerIndex,
+                filledBase: filledBase,
+                filledQuote: filledQuote,
+                rate: rate,
+                feeDrops: feeDrops,
+                date: date,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String executionId,
+                required String txHash,
+                required int ledgerIndex,
+                required String filledBase,
+                required String filledQuote,
+                required String rate,
+                Value<String?> feeDrops = const Value.absent(),
+                required DateTime date,
+                Value<int> rowid = const Value.absent(),
+              }) => TradeFillsCompanion.insert(
+                executionId: executionId,
+                txHash: txHash,
+                ledgerIndex: ledgerIndex,
+                filledBase: filledBase,
+                filledQuote: filledQuote,
+                rate: rate,
+                feeDrops: feeDrops,
+                date: date,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TradeFillsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TradeFillsTable,
+      TradeFill,
+      $$TradeFillsTableFilterComposer,
+      $$TradeFillsTableOrderingComposer,
+      $$TradeFillsTableAnnotationComposer,
+      $$TradeFillsTableCreateCompanionBuilder,
+      $$TradeFillsTableUpdateCompanionBuilder,
+      (TradeFill, BaseReferences<_$AppDatabase, $TradeFillsTable, TradeFill>),
+      TradeFill,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2653,4 +5196,8 @@ class $AppDatabaseManager {
       $$CachedTxsTableTableManager(_db, _db.cachedTxs);
   $$AppSettingsRowsTableTableManager get appSettingsRows =>
       $$AppSettingsRowsTableTableManager(_db, _db.appSettingsRows);
+  $$TradeExecutionsTableTableManager get tradeExecutions =>
+      $$TradeExecutionsTableTableManager(_db, _db.tradeExecutions);
+  $$TradeFillsTableTableManager get tradeFills =>
+      $$TradeFillsTableTableManager(_db, _db.tradeFills);
 }

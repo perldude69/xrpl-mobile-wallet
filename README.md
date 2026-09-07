@@ -109,9 +109,9 @@ migrate automatically.
 
 ## Design docs
 
-- [Wallet design](docs/design/2026-07-20-xrpl-mobile-wallet-design.md)
-- [Attach keys](docs/design/2026-08-02-attach-keys-watch-wallet-design.md)
-- [Game PIN](docs/design/2026-08-03-game-pin-design.md)
+- [Consolidated plan](docs/design/2026-09-06-consolidated-plan.md) — Part I is a
+  spec of shipped behaviour (core design, attach keys, game PIN, trading slice);
+  Part II is the queued work (smart trade execution).
 
 ## License
 

@@ -22,20 +22,14 @@ void main() {
   group('mainnet HTTP RPC endpoints', () {
     test('primary is public cluster', () {
       expect(NetworkId.mainnet.defaultHttp, 'https://xrplcluster.com/');
-      expect(
-        NetworkId.mainnet.httpEndpoints.first,
-        'https://xrplcluster.com/',
-      );
+      expect(NetworkId.mainnet.httpEndpoints.first, 'https://xrplcluster.com/');
     });
 
     test('two public endpoints: cluster, ankr', () {
-      expect(
-        NetworkId.mainnet.httpEndpoints,
-        [
-          'https://xrplcluster.com/',
-          'https://mainnet.xrpl-rpc.com/',
-        ],
-      );
+      expect(NetworkId.mainnet.httpEndpoints, [
+        'https://xrplcluster.com/',
+        'https://mainnet.xrpl-rpc.com/',
+      ]);
     });
   });
 
@@ -45,11 +39,8 @@ void main() {
         NetworkId.testnet.defaultWss,
         'wss://s.altnet.rippletest.net:51233',
       );
-      expect(
-        NetworkId.testnet.defaultHttp,
-        'https://s.altnet.rippletest.net:51234/',
-      );
-      expect(NetworkId.testnet.httpEndpoints.length, 1);
+      expect(NetworkId.testnet.defaultHttp, 'https://testnet.xrpl-rpc.com/');
+      expect(NetworkId.testnet.httpEndpoints.length, 2);
       expect(NetworkId.testnet.wssEndpoints.length, 1);
     });
   });

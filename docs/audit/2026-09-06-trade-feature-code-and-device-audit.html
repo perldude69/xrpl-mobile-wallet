@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XRPL Mobile Wallet — Trade Feature Code &amp; Device Audit</title>
+  <style>
+    :root {
+      --bg: #0b1216;
+      --bg-elev: #121c22;
+      --panel: #162229;
+      --teal: #00a3bf;
+      --text: #e8f1f4;
+      --muted: #8aa0aa;
+      --warn: #f0b429;
+      --danger: #e85d5d;
+      --ok: #3ecf8e;
+      --low: #6cb6ff;
+      --info: #9aa8b3;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 14px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 163, 191, 0.16), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--teal); }
+    a:hover { color: #4fd0e4; }
+    .wrap { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+    header.hero h1 { margin: 0 0 0.35rem; font-size: clamp(1.7rem, 4vw, 2.35rem); letter-spacing: -0.03em; }
+    header.hero .meta { color: var(--muted); font-size: 0.95rem; margin: 0.4rem 0 1.2rem; }
+    header.hero .meta span { margin-right: 1.25rem; }
+    .lede { max-width: 48rem; color: var(--muted); font-size: 1.05rem; margin: 0; }
+    section {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.45rem 1.5rem 1.65rem;
+      margin-top: 1.15rem;
+    }
+    h2 { margin: 0 0 0.85rem; font-size: 1.28rem; letter-spacing: -0.02em; }
+    h3 { margin: 1.4rem 0 0.45rem; font-size: 1.08rem; }
+    h3 .id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--teal); margin-right: 0.35rem; }
+    p { margin: 0.55rem 0; }
+    li { margin: 0.28rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0.8rem 0 0.2rem; }
+    th, td { text-align: left; padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 0.18rem 0.5rem; border-radius: 999px; vertical-align: middle;
+    }
+    .badge.high { background: rgba(232, 93, 93, 0.18); color: var(--danger); }
+    .badge.low { background: rgba(108, 182, 255, 0.16); color: var(--low); }
+    .badge.info { background: rgba(154, 168, 179, 0.16); color: var(--info); }
+    .badge.pass { background: rgba(62, 207, 142, 0.16); color: var(--ok); }
+    .badge.warn { background: rgba(240, 180, 41, 0.16); color: var(--warn); }
+    .finding-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.55rem 0.8rem; }
+    .kicker { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.35rem; }
+    pre {
+      background: #0a1014; border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.45; color: #d5e6ec;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; }
+    p code, li code, td code { background: rgba(255,255,255,0.06); padding: 0.08rem 0.32rem; border-radius: 4px; }
+    .note { border-left: 3px solid var(--teal); padding: 0.15rem 0 0.15rem 0.9rem; color: var(--muted); }
+    hr { border: 0; border-top: 1px solid var(--border); margin: 1.4rem 0; }
+    footer { color: var(--muted); font-size: 0.85rem; margin-top: 1.5rem; }
+    figure.evidence {
+      margin: 1rem 0 0.4rem; background: #0a1014; border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.6rem; max-width: 20rem;
+    }
+    figure.evidence img { display: block; width: 100%; height: auto; border-radius: 8px; background: #000; }
+    figure.evidence figcaption { color: var(--muted); font-size: 0.82rem; margin-top: 0.45rem; }
+    @media print {
+      body { background: #fff; color: #111; }
+      section { background: #fff; border-color: #ddd; }
+      a { color: #0645ad; }
+      pre { background: #f6f8fa; color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">Code &amp; Device Audit · Findings Only</p>
+      <h1>XRPL Mobile Wallet — Trade Feature Code &amp; Device Audit</h1>
+      <p class="meta">
+        <span>06 September 2026</span>
+        <span>Independent automated pass (Claude Code)</span>
+        <span>Package <code>info.richlist.wallet</code> · versionName 2.0.0 (versionCode 4)</span>
+      </p>
+      <p class="lede">
+        A fresh pass over the working tree as it stands on branch <code>main</code>
+        at commit <code>7d3acbd</code> plus <strong>~3,000 lines of uncommitted
+        change</strong> (a new XRPL <em>Trade</em> feature, testnet faucet helper,
+        per-network wallet scoping, schema&nbsp;v4, and a new default RPC endpoint),
+        and over the release APK built from that tree and installed on the attached
+        Pixel&nbsp;8&nbsp;Pro <code>38181FDJG00F43</code>. The code was reviewed on
+        its own merits; prior audit rounds (XRW-01&nbsp;…&nbsp;XRW-25) were not
+        re-litigated. Finding IDs continue the XRW space.
+      </p>
+    </header>
+
+    <section id="abstract">
+      <h2>Abstract</h2>
+      <p>
+        <span class="badge pass">0 High</span>
+        <span class="badge pass">0 Medium</span>
+        <span class="badge low">3 Low</span>
+        <span class="badge info">3 Informational</span>
+      </p>
+      <p>
+        The new Trade flow keeps the wallet's core secret-handling discipline: the
+        signing key is read only after a verified wallet PIN, held in a local
+        variable, and pushed through the same guarded sign/submit path as payments
+        (fee cap, address check). No secret disclosure — on screen, on disk, or in
+        logs — was found.
+      </p>
+      <p>
+        What the pass did surface is a cluster of <strong>polish and safety-parity
+        gaps around a money-moving feature that ships with no tests</strong>: raw
+        library exception text is rendered in the new UI again (regression of the
+        closed XRW-25), a maintainer-operated host is now the default mainnet RPC
+        and the default submit endpoint for signed offers (XRW-27), the Trade
+        action is offered to Ledger wallets it cannot actually sign for (XRW-30),
+        and the pre-sign review omits the network fee and reserve impact the
+        feature's own design document requires (XRW-29). None are exploitable as
+        written.
+      </p>
+    </section>
+
+    <section id="method">
+      <h2>Methodology</h2>
+      <ul>
+        <li>
+          Full read of the uncommitted delta: <code>git diff</code> plus the new
+          files <code>lib/ui/trade/trade_dashboard_screen.dart</code>,
+          <code>lib/data/xrpl_rpc/testnet_faucet_service.dart</code>,
+          the trade execution plan (since folded into
+          <code>docs/design/2026-09-06-consolidated-plan.md</code>),
+          <code>tool/testnet_trade_trial.py</code>.
+        </li>
+        <li>
+          Focus surfaces: the new sign/submit entry point
+          (<code>PaymentService.signAndSubmitTransaction</code> →
+          <code>_signAndSubmit</code>), <code>OfferCreate</code> /
+          <code>OfferCancel</code> construction and amount conversion, PIN-gating
+          order relative to key reads and DB writes, exception handling and what
+          reaches the screen and the Drift DB, the new
+          <code>rpc.rich-list.info</code> catalog entry, per-network wallet
+          filtering in <code>WalletListController.reload</code>, schema v3&nbsp;→&nbsp;v4
+          migration, and the testnet faucet POST.
+        </li>
+        <li>
+          <code>flutter pub get</code>, <code>flutter analyze</code> (clean),
+          <code>flutter test</code> (168/168).
+        </li>
+        <li>
+          Release build via <code>tool/build_release.sh</code>
+          (<code>--obfuscate --split-debug-info=build/symbols/android</code>);
+          <code>apksigner</code> / <code>aapt2</code> inspection; ELF section scan
+          of <code>lib/arm64-v8a/libapp.so</code>; native string scan for secret
+          material.
+        </li>
+        <li>
+          Device: <code>adb install -r</code> onto the Pixel 8 Pro (fresh install,
+          no prior build present), launch, runtime-permission state, first-run
+          notification prompt, <code>adb exec-out screencap</code> of the Set-PIN
+          screen, <code>uiautomator dump</code>, logcat secret scan. App data was
+          cleared and the process force-stopped afterwards; the build was left
+          installed.
+        </li>
+      </ul>
+      <p class="note">
+        Not exercised: live offer submission with real funds, Ledger USB signing,
+        biometric unlock, the background watcher, and full wallet
+        create/import/backup cycles on this build. The FLAG_SECURE behaviour of
+        create/import/attach screens was verified in earlier rounds on the
+        identical mechanism.
+      </p>
+      <figure class="evidence">
+        <img src="evidence/2026-09-06-v2-setup-pin-flag-secure-black.png"
+             alt="adb screencap of the Set-PIN screen: app content blacked out by FLAG_SECURE, only the status bar visible" />
+        <figcaption>
+          06 Sep 2026, 14:32: <code>adb exec-out screencap</code> of the focused
+          release <code>MainActivity</code> on the first-run Set-PIN screen. The
+          Flutter surface is black (FLAG_SECURE); <code>uiautomator dump</code>
+          returned no node tree for the window.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="findings">
+      <h2>Findings</h2>
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-26</span>Raw exception text rendered in the new Trade UI</h3>
+        <span class="badge low">Low</span>
+        <span class="badge info">CWE-209 / MASVS-CODE</span>
+      </div>
+      <p>
+        <strong>Location.</strong> <code>lib/ui/trade/trade_dashboard_screen.dart</code>:
+        line&nbsp;246 <code>SnackBar(... Text('XRPL rejected submit: ${e.message}'))</code>
+        (<code>RPCError</code>), line&nbsp;280
+        <code>Text(e.message?.toString() ?? 'Limit order submission failed')</code>
+        (<code>ArgumentError</code>), line&nbsp;296
+        <code>SnackBar(content: Text(e.message))</code>
+        (<code>BaseXRPLPluginException</code>).
+      </p>
+      <p>
+        <strong>Description.</strong> The 2026-09-05 XRW-25 remediation removed all
+        <code>e.toString()</code> / <code>e.message</code> passthrough from
+        <code>lib/ui</code> and routed unexpected failures through
+        <code>userFacingError()</code>. The new Trade screen reintroduces the
+        pattern in three snackbars. As with XRW-25, the dependencies actually
+        invoked here (<code>xrpl_dart</code>, <code>blockchain_utils</code>) throw
+        fixed strings that never quote a secret, and the signing key never reaches
+        these <code>catch</code> arms, so <strong>there is no disclosure
+        today</strong>. The finding is the reopened channel: a future dependency
+        bump could surface richer text verbatim on a screen that may not be
+        FLAG_SECURE-protected.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Map to fixed messages the way the rest of
+        <code>lib/ui</code> now does — reuse <code>userFacingError()</code> and the
+        <code>PaymentOperationException.stage</code> codes the submit path already
+        produces. The generic <code>catch (e)</code> arm at line&nbsp;310 is already
+        correct; make the typed arms match it.
+      </p>
+
+      <hr />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-27</span>Maintainer-operated host is the new default mainnet RPC and offer-submit endpoint</h3>
+        <span class="badge low">Low</span>
+        <span class="badge info">CWE-668 / privacy · integrity</span>
+      </div>
+      <p>
+        <strong>Location.</strong>
+        <code>lib/data/endpoints/endpoint_preferences.dart:116–122</code> —
+        <code>rpc.rich-list.info</code> is inserted as the <em>first</em> entry of
+        <code>mainnetHttpCatalog</code>, ahead of <code>xrplcluster.com</code>.
+      </p>
+      <p>
+        <strong>Description.</strong> Selected endpoint IDs default to the catalog
+        in order (an empty selection "falls back to the full catalog"), so on a
+        default install the first working entry — now
+        <code>rpc.rich-list.info</code> — serves every mainnet JSON-RPC call:
+        <code>account_info</code>, <code>account_lines</code>,
+        <code>account_tx</code>, <code>account_offers</code>, and
+        <code>submit</code>. Two consequences:
+      </p>
+      <ul>
+        <li>
+          <strong>Privacy.</strong> Every wallet address a user holds, plus its
+          balance and history polling, is concentrated at one maintainer-run host
+          by default rather than spread across a public cluster.
+        </li>
+        <li>
+          <strong>Submit-path position.</strong> This build adds
+          <code>OfferCreate</code> / <code>OfferCancel</code> submission. An RPC
+          that receives a signed offer blob before it is broadcast is positioned
+          to delay, drop, or front-run it. The blob is already signed so its
+          contents cannot be altered undetected, but ordering and disclosure are
+          in the endpoint's hands.
+        </li>
+      </ul>
+      <p>
+        The in-tree catalogs now disagree:
+        <code>lib/config/network_id.dart</code> still lists
+        <code>xrplcluster.com</code> first for both HTTP and WSS, while
+        <code>endpoint_preferences.dart</code> leads with
+        <code>rpc.rich-list.info</code> (HTTP only — it is absent from the WSS
+        catalog, so the watcher is unaffected).
+      </p>
+      <p>
+        <strong>Existing mitigations.</strong> TLS is enforced
+        (<code>EndpointUrl.validate</code> rejects non-<code>https</code>); the
+        endpoint is user-disableable and reorderable in Settings; status UI shows
+        host only.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Keep a neutral public cluster as the
+        default first entry and offer <code>rpc.rich-list.info</code> as a
+        non-default selectable option; reconcile the two catalogs; and state in
+        <code>docs/privacy/privacy.md</code> and/or in-app that the endpoint is
+        maintainer-operated.
+      </p>
+
+      <hr />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-30</span>Trade is offered for Ledger wallets but can never sign for them</h3>
+        <span class="badge low">Low</span>
+        <span class="badge info">CWE-451 / misleading UI</span>
+      </div>
+      <p>
+        <strong>Location.</strong>
+        <code>lib/ui/wallets/detail/wallet_detail_screen.dart:399–411</code> (Trade
+        button shown unconditionally) and
+        <code>lib/ui/trade/trade_dashboard_screen.dart</code>
+        (<code>_cancel</code>, <code>_createLimitOrder</code>).
+      </p>
+      <p>
+        <strong>Description.</strong> The Trade screen keys its "can sign" branches
+        off <code>WalletAccount.canSign</code>, which is <code>true</code> for a
+        Ledger wallet (<code>useLedger</code>). But both signing paths call
+        <code>keyVaultProvider.readSecret(account.id)</code> and the software
+        <code>PaymentService.signAndSubmitTransaction</code> only — there is no
+        <code>LedgerXrpDevice</code> path. For a Ledger wallet
+        <code>readSecret</code> returns <code>null</code>, yielding
+        <code>StateError('No signing key')</code> and a generic failure snackbar
+        <em>after</em> the user has been walked through draft&nbsp;→&nbsp;review&nbsp;→
+        PIN. The feature's design document explicitly requires each Trade
+        transaction to be signed on the device for Ledger wallets.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Until the on-device path exists, gate
+        Trade signing to <code>WalletKind.signing</code> (treat Ledger like
+        watch-only: review-only), and label it as such. Otherwise implement the
+        <code>LedgerXrpDevice</code> sign-and-submit branch and add the golden
+        field tests the design doc calls for.
+      </p>
+
+      <hr />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-28</span>Trade-execution errors persisted to the local database without mapping</h3>
+        <span class="badge info">Informational</span>
+        <span class="badge info">CWE-532 / MASVS-STORAGE-2</span>
+      </div>
+      <p>
+        <strong>Location.</strong>
+        <code>lib/data/database/tables.dart</code>
+        (<code>TradeExecutions.lastError</code>),
+        <code>lib/data/database/app_database.dart</code>
+        (<code>updateTradeExecutionStatus(..., lastError:)</code>), callers at
+        <code>trade_dashboard_screen.dart:254, 273, 290, 304</code>.
+      </p>
+      <p>
+        <strong>Description.</strong> The new <code>trade_executions</code> table
+        stores <code>e.message</code>, <code>e.message?.toString()</code>, and the
+        <code>PaymentOperationException.stage</code> string into
+        <code>last_error</code>. The Drift DB is the app's unencrypted "public
+        metadata" store; <code>allowBackup=false</code> keeps it off cloud backup
+        and off <code>adb backup</code>. The same dependency-exception analysis as
+        XRW-25/26 applies, so no secret is written today — but raw, unmapped
+        library text is now retained at rest, which is exactly what the wider
+        remediation set out to stop.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Persist a small mapped enum
+        (<code>stage</code> / error category) rather than free text; keep raw
+        strings out of the row.
+      </p>
+
+      <hr />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-29</span>Trade sign flow omits network fee and reserve impact from the review</h3>
+        <span class="badge info">Informational</span>
+        <span class="badge info">design-parity</span>
+      </div>
+      <p>
+        <strong>Location.</strong> <code>_OfferReviewDialog</code>,
+        <code>lib/ui/trade/trade_dashboard_screen.dart:539–588</code>.
+      </p>
+      <p>
+        <strong>Description.</strong> The autofilled fee <em>is</em> bounded —
+        <code>_signAndSubmit</code> runs
+        <code>PaymentValidators.validateFeeDrops</code> against
+        <code>AppConfig.maxFeeDrops</code> (0.1&nbsp;XRP) and throws before signing
+        if exceeded — so there is no uncapped-fee exposure. But unlike the Send
+        flow's reviewed-fee guard, the offer review dialog shows only the sell and
+        buy amounts. It does not surface the actual fee, the XRP reserve increase
+        from a resting offer, or a concrete "funds locked until filled/cancelled"
+        figure. The feature's design document (§ "Review and Safety Rules")
+        lists fee and reserve effect as mandatory review content.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Autofill (or estimate) before showing the
+        review, and display fee + reserve delta there, matching Send.
+      </p>
+
+      <hr />
+
+      <div class="finding-head">
+        <h3 style="margin:0;"><span class="id">XRW-31</span>Trade-execution row written before the PIN is verified</h3>
+        <span class="badge info">Informational</span>
+        <span class="badge info">data hygiene</span>
+      </div>
+      <p>
+        <strong>Location.</strong>
+        <code>trade_dashboard_screen.dart:160–185</code> (insert) vs. line&nbsp;187
+        (<code>promptAndVerifyWalletPin</code>).
+      </p>
+      <p>
+        <strong>Description.</strong> <code>_createLimitOrder</code> inserts the
+        <code>trade_executions</code> row with <code>status:
+        'awaiting_approval'</code> before prompting for the PIN. If the user
+        cancels or fails the PIN, the row is left behind. Neither
+        <code>awaiting_approval</code> nor <code>submitted</code> is in the
+        terminal set used by <code>getActiveTradeExecutions()</code>
+        (<code>completed</code> / <code>cancelled</code> / <code>failed</code>), so
+        orphaned drafts accumulate in the "active" list.
+      </p>
+      <p>
+        <strong>Recommendation.</strong> Insert only after the PIN succeeds, or
+        mark the row <code>cancelled</code> on abort; and make sure a successfully
+        <code>submitted</code> order eventually reconciles to a terminal state.
+      </p>
+    </section>
+
+    <section id="observations">
+      <h2>Non-security observations</h2>
+      <ul>
+        <li>
+          <strong>No tests for the Trade feature.</strong> There is no coverage of
+          <code>OfferCreate</code> / <code>OfferCancel</code> field construction,
+          <code>AccountOffer</code> parsing, result-code mapping,
+          <code>_toAmount</code> drops conversion, or the v4 migration.
+          <code>AGENTS.md</code> ("golden addresses / known vectors", "run
+          <code>flutter test</code> before claiming crypto or import work is
+          done") and the feature's own design document (Phase&nbsp;1/2: "tests for
+          offer parsing, cancellation construction, and result mapping"; "golden
+          transaction-field tests") both call for them. Current suite:
+          <code>flutter analyze</code> clean, <code>flutter test</code> 168/168.
+        </li>
+        <li>
+          <strong>Schema v3&nbsp;→&nbsp;v4.</strong> Migration adds
+          <code>tradeExecutions</code> and <code>tradeExecutionSteps</code> via
+          <code>createTable</code> in the <code>from &lt; 4</code> branch;
+          <code>app_database.g.dart</code> is regenerated consistently. No
+          migration round-trip test was added (nor exists for v2/v3).
+        </li>
+        <li>
+          <strong>Stale in-app version string.</strong>
+          <code>lib/ui/settings/settings_screen.dart</code> still shows "Version
+          1.0.1" in the About tile; <code>pubspec.yaml</code> is
+          <code>2.0.0+4</code>.
+        </li>
+        <li>
+          <strong>Per-network wallet filtering.</strong>
+          <code>WalletListController.reload()</code> now filters wallets to the
+          active network before <code>ensureUniqueAddress</code> and watcher sync.
+          Importing the same address under both networks is therefore no longer
+          de-duplicated. Likely intended (per-network wallets); worth an explicit
+          decision and a test.
+        </li>
+        <li>
+          <strong><code>url_launcher</code> adds a WebView activity.</strong> The
+          manifest now contains a non-exported
+          <code>io.flutter.plugins.urllauncher.WebViewActivity</code>. Current
+          call sites use <code>LaunchMode.externalApplication</code> only; keep it
+          that way so no in-app WebView is ever instantiated.
+        </li>
+        <li>
+          <strong>Android 16 local-network attribution.</strong> On the test
+          device the OS lists <code>android.permission.ACCESS_LOCAL_NETWORK</code>
+          as pre-granted (it is not in the app's declared list). With custom-endpoint
+          support a user could point RPC/WSS at a LAN host. Low risk; noted only.
+        </li>
+        <li>
+          <strong>Test wiring warning.</strong> <code>test/widget_test.dart</code>
+          logs a Drift "created the database class AppDatabase multiple times"
+          warning. Non-fatal; test-only.
+        </li>
+        <li>
+          <strong>Per-offer PIN prompts in "Cancel all".</strong>
+          <code>_cancelAll</code> loops <code>_cancel</code>, which prompts for the
+          PIN each iteration — N dialogs for N offers. UX, not security.
+        </li>
+      </ul>
+    </section>
+
+    <section id="verification">
+      <h2>Verified — checked this pass, no finding</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Secret handling in Trade</td>
+            <td>
+              Key read via <code>KeyVault.readSecret</code> only after
+              <code>promptAndVerifyWalletPin</code> returns true; held in a local
+              <code>secret</code> variable; passed to <code>PaymentService</code>;
+              not stored on the widget, not written to the DB, not logged.
+            </td>
+          </tr>
+          <tr>
+            <td>Sign/submit guard reuse</td>
+            <td>
+              <code>signAndSubmitTransaction</code> delegates to the same
+              <code>_signAndSubmit</code> as payments:
+              <code>privateKeyFromSecret(secret, expectedAddress: fromAddress)</code>
+              (address-mismatch throws), <code>XRPHelper.autoFill</code>, fee
+              validated against <code>AppConfig.maxFeeDrops</code>, then sign +
+              submit. Raw transport errors are wrapped in
+              <code>PaymentOperationException(stage)</code> — an improvement over
+              the previous rethrow-anything behaviour.
+            </td>
+          </tr>
+          <tr>
+            <td>Offer construction</td>
+            <td>
+              <code>OfferCreate</code> / <code>OfferCancel</code> built only from
+              public inputs (account address, user amounts, offer sequence,
+              public key hex). XRP amounts go through
+              <code>XrpAmount.xrpToDrops</code> → <code>BigInt</code>; issued
+              amounts carry the issuer address explicitly.
+            </td>
+          </tr>
+          <tr>
+            <td>PIN verification</td>
+            <td>
+              <code>promptAndVerifyWalletPin</code> calls
+              <code>lockController.verifyWalletPin</code> — a real check, not a
+              prompt-only gate; wrong PIN aborts the action.
+            </td>
+          </tr>
+          <tr>
+            <td>Wallet export change</td>
+            <td>
+              New <code>network</code> field on exported entries carries public
+              data only; AES-GCM-256 + PBKDF2 envelope and generic
+              (product-identifier-free) header unchanged;
+              <code>wallet_export_test.dart</code> updated for the round trip.
+            </td>
+          </tr>
+          <tr>
+            <td>Testnet faucet helper</td>
+            <td>
+              UI entry points gated on <code>network == NetworkId.testnet</code>;
+              <code>fund()</code> POSTs a public classic address to the Ripple
+              altnet faucet over HTTPS; no secret; failure surfaces a fixed
+              message.
+            </td>
+          </tr>
+          <tr>
+            <td>Endpoint validation</td>
+            <td>
+              <code>EndpointUrl.validate</code> still rejects non-<code>https</code>
+              / non-<code>wss</code>; <code>hostOf</code> drops query strings for
+              display.
+            </td>
+          </tr>
+          <tr>
+            <td>Release APK</td>
+            <td>
+              <code>tool/build_release.sh</code>; <code>libapp.so</code> ELF
+              sections are <code>.rodata .text .dynsym .dynstr .eh_frame
+              .dynamic .bss</code> only — no <code>.debug_*</code>, no
+              <code>.symtab</code>; split-debug maps in
+              <code>build/symbols/android/</code> are local, not in the APK.
+              Native string scan found validation labels ("Invalid mnemonic
+              length." etc.), no secret material. SHA-256
+              <code>c4a6fc22b22a776d036edd0ee06d0effd471e880a33aa3801f19819ba53b078b</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>Signing</td>
+            <td>
+              APK Signature Scheme v2 verified; single signer, RSA-2048, upload
+              certificate <code>CN=James Hughes, OU=Rich-List.info</code>, SHA-256
+              <code>f90f349b4412ae1c164c53b6eba9b6095ff6a12bd3051a540b05fcfbbfbe72bb</code>
+              — same key as prior releases. Not debug-signed.
+            </td>
+          </tr>
+          <tr>
+            <td>Manifest / packaging</td>
+            <td>
+              <code>info.richlist.wallet</code> 2.0.0 (4), target SDK 36,
+              <code>allowBackup=false</code>, only <code>MainActivity</code>
+              exported, no <code>usesCleartextTraffic</code>, no new dangerous
+              permissions despite the <code>url_launcher</code> addition.
+            </td>
+          </tr>
+          <tr>
+            <td>Device — install &amp; launch</td>
+            <td>
+              Fresh <code>adb install -r</code> onto the Pixel 8 Pro succeeded;
+              process observed (<code>pidof</code>); first-run
+              <code>POST_NOTIFICATIONS</code> prompt shown and denied;
+              <code>POST_NOTIFICATIONS</code> and <code>CAMERA</code> both
+              <code>granted=false</code> afterwards.
+            </td>
+          </tr>
+          <tr>
+            <td>Device — screen security</td>
+            <td>
+              Set-PIN screen: <code>adb exec-out screencap</code> is black for app
+              content (status bar only); <code>uiautomator dump</code> returned no
+              node tree. Evidence:
+              <code>evidence/2026-09-06-v2-setup-pin-flag-secure-black.png</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>Device — logcat</td>
+            <td>
+              Sampled app session: no mnemonic, seed, family-seed, private-key,
+              PIN, or secret matches. Hits were Android framework window/permission
+              text only.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        Previously accepted informational items (XRW-02 in-memory PIN throttle,
+        XRW-19 PIN-as-app-lock) are unchanged and not restated here.
+      </p>
+    </section>
+
+    <section id="limitations">
+      <h2>Limitations</h2>
+      <p>
+        This is an audit of the working tree (uncommitted) and a build made from
+        it, not of a tagged release. Live offer placement with real funds, Ledger
+        USB signing, biometric unlock, the FGS watcher, and full
+        create/import/backup flows on this build were not exercised. Device checks
+        were run on a fresh install; the app's data was cleared and the process
+        force-stopped afterwards, and the build was left installed on the device.
+      </p>
+    </section>
+
+    <footer>
+      XRPL Mobile Wallet · trade feature code &amp; device audit ·
+      06 September 2026 · working tree at <code>7d3acbd</code> + uncommitted delta ·
+      prior rounds under <a href="historical/">historical/</a>.
+    </footer>
+  </div>
+</body>
+</html>

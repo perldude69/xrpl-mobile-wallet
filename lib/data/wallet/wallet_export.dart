@@ -8,10 +8,15 @@ import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 
 /// One public wallet entry for export/import (no credentials).
 class ExportedWalletEntry {
-  const ExportedWalletEntry({required this.name, required this.address});
+  const ExportedWalletEntry({
+    required this.name,
+    required this.address,
+    this.network = NetworkId.mainnet,
+  });
 
   final String name;
   final String address;
+  final NetworkId network;
 }
 
 /// Password-encrypted export of wallet names + addresses only.
@@ -41,10 +46,7 @@ class WalletExport {
     final plain = {
       'items': [
         for (final w in wallets)
-          {
-            'n': w.label,
-            'a': w.address,
-          },
+          {'n': w.label, 'a': w.address, 'network': w.preferredNetwork.name},
       ],
     };
     final plainBytes = utf8.encode(jsonEncode(plain));
@@ -52,10 +54,7 @@ class WalletExport {
     final salt = _randomBytes(saltLength);
     final secretKey = await _deriveKey(password, salt);
     final algorithm = AesGcm.with256bits();
-    final secretBox = await algorithm.encrypt(
-      plainBytes,
-      secretKey: secretKey,
-    );
+    final secretBox = await algorithm.encrypt(plainBytes, secretKey: secretKey);
 
     // Generic envelope — no product or ledger identifiers in cleartext.
     return {
@@ -91,11 +90,7 @@ class WalletExport {
 
     final secretKey = await _deriveKey(password, salt, iterations: iter);
     final algorithm = AesGcm.with256bits();
-    final secretBox = SecretBox(
-      ct,
-      nonce: nonce,
-      mac: Mac(macBytes),
-    );
+    final secretBox = SecretBox(ct, nonce: nonce, mac: Mac(macBytes));
 
     final List<int> plainBytes;
     try {
@@ -119,7 +114,11 @@ class WalletExport {
       final name = (item['n'] ?? item['name'] ?? '').toString().trim();
       final address = (item['a'] ?? item['address'] ?? '').toString().trim();
       if (name.isEmpty || address.isEmpty) continue;
-      out.add(ExportedWalletEntry(name: name, address: address));
+      final networkName = (item['network'] ?? 'mainnet').toString();
+      final network = networkIdFromName(networkName);
+      out.add(
+        ExportedWalletEntry(name: name, address: address, network: network),
+      );
     }
     return out;
   }
@@ -200,6 +199,8 @@ class WalletExport {
 
   static Uint8List _randomBytes(int length) {
     final r = Random.secure();
-    return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
+    return Uint8List.fromList(
+      List<int>.generate(length, (_) => r.nextInt(256)),
+    );
   }
 }

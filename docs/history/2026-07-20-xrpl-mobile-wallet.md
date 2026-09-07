@@ -8,7 +8,8 @@
 
 **Tech Stack:** Flutter 3.x / Dart 3.x, `xrpl_dart`, `blockchain_utils`, `flutter_secure_storage`, `local_auth`, `drift` + `sqlite3_flutter_libs`, `flutter_riverpod`, `flutter_local_notifications`, `qr_flutter`, Material 3.
 
-**Spec:** `docs/design/2026-07-20-xrpl-mobile-wallet-design.md`
+**Spec:** originally `docs/design/2026-07-20-xrpl-mobile-wallet-design.md`; folded
+into `docs/design/2026-09-06-consolidated-plan.md` (Part I) on 2026-09-06.
 
 **Project root:** `/home/jim/xrpl-mobile-wallet`
 

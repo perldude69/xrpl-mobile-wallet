@@ -6,6 +6,8 @@ import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
 import 'package:xrpl_mobile_wallet/data/payments/payment_service.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rpc_http_client.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
+import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rich_list_book_offers_request.dart';
+import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rich_list_account_offers_request.dart';
 
 /// A single balance entry (native XRP or issued IOU).
 class LedgerBalance {
@@ -25,10 +27,27 @@ class LedgerBalance {
   final String? issuer;
 
   Map<String, dynamic> toMap() => {
-        'currency': currency,
-        'value': value,
-        if (issuer != null) 'issuer': issuer,
-      };
+    'currency': currency,
+    'value': value,
+    if (issuer != null) 'issuer': issuer,
+  };
+}
+
+class AccountReserveInfo {
+  const AccountReserveInfo({
+    required this.xrpBalanceDrops,
+    required this.ownerCount,
+    required this.baseReserveDrops,
+    required this.incrementDrops,
+  });
+
+  final BigInt xrpBalanceDrops;
+  final int ownerCount;
+  final BigInt baseReserveDrops;
+  final BigInt incrementDrops;
+
+  BigInt get currentReserveDrops =>
+      baseReserveDrops + incrementDrops * BigInt.from(ownerCount);
 }
 
 /// Lightweight account transaction summary for UI / caching.
@@ -54,15 +73,70 @@ class LedgerTxSummary {
   final bool? validated;
 
   Map<String, dynamic> toMap() => {
-        'hash': hash,
-        'ledgerIndex': ledgerIndex,
-        'transactionType': transactionType,
-        'account': account,
-        'destination': destination,
-        'amountSummary': amountSummary,
-        'date': date,
-        'validated': validated,
-      };
+    'hash': hash,
+    'ledgerIndex': ledgerIndex,
+    'transactionType': transactionType,
+    'account': account,
+    'destination': destination,
+    'amountSummary': amountSummary,
+    'date': date,
+    'validated': validated,
+  };
+}
+
+/// One validated (or still-pending) transaction, with the metadata the trade
+/// reconciler needs to decide what actually happened.
+///
+/// [affectedNodes] is deliberately raw JSON in XRPL's own shape rather than a
+/// package model: fill amounts are read from it by
+/// `domain/trade/fill_parser.dart`, which is pinned to captured real metadata
+/// in tests and must not move when a dependency reshapes its classes.
+class LedgerTxDetail {
+  const LedgerTxDetail({
+    required this.hash,
+    required this.transactionType,
+    required this.account,
+    required this.affectedNodes,
+    this.ledgerIndex,
+    this.validated,
+    this.transactionResult,
+    this.sequence,
+    this.lastLedgerSequence,
+    this.feeDrops,
+    this.date,
+  });
+
+  final String hash;
+  final String transactionType;
+  final String account;
+
+  /// `meta.AffectedNodes`, unmodified.
+  final List<Map<String, dynamic>> affectedNodes;
+
+  final int? ledgerIndex;
+  final bool? validated;
+
+  /// Engine result recorded in the validated metadata, e.g. `tesSUCCESS`.
+  final String? transactionResult;
+
+  final int? sequence;
+  final int? lastLedgerSequence;
+  final String? feeDrops;
+
+  /// Ledger close time in Ripple-epoch seconds.
+  final int? date;
+
+  /// True only when the ledger has validated this transaction *and* it
+  /// succeeded. Anything else — pending, failed, unknown — is not a fill.
+  bool get isValidatedSuccess =>
+      validated == true && transactionResult == 'tesSUCCESS';
+
+  /// True when the ledger validated the transaction but the engine rejected
+  /// it. Terminal: this transaction will never do anything.
+  bool get isValidatedFailure =>
+      validated == true &&
+      transactionResult != null &&
+      transactionResult != 'tesSUCCESS';
 }
 
 /// Read-only XRPL ledger client over JSON-RPC HTTP.
@@ -126,7 +200,7 @@ class XrplRpcClient {
         final service = RpcHttpClient(
           url,
           client,
-          defaultTimeout: const Duration(seconds: 12),
+          defaultTimeout: const Duration(seconds: 30),
         );
         final rpc = XRPProvider(service);
         await rpc.request(XRPRequestServerInfo());
@@ -171,8 +245,182 @@ class XrplRpcClient {
     return result.getFeeType(type: XrplFeeType.minimum);
   }
 
+  /// Owner-reserve increment in drops (per owned ledger object, e.g. a resting
+  /// offer), from the validated ledger in `server_info`. `null` if the server
+  /// did not report it.
+  Future<BigInt?> fetchOwnerReserveIncrementDrops() async {
+    final rpc = _requireRpc();
+    final result = await rpc.request(XRPRequestServerInfo());
+    final incXrp = result.info.validatedLedger?.reserveIncXrp;
+    if (incXrp == null) return null;
+    return BigInt.from((incXrp * 1000000).round());
+  }
+
+  Future<AccountReserveInfo> fetchAccountReserveInfo(String address) async {
+    final rpc = _requireRpc();
+    final info = await rpc.request(XRPRequestAccountInfo(account: address));
+    final server = await rpc.request(XRPRequestServerInfo());
+    final ledger = server.info.validatedLedger;
+    if (ledger == null) {
+      throw const FormatException('Reserve data unavailable.');
+    }
+    return AccountReserveInfo(
+      xrpBalanceDrops: BigInt.parse(info.accountData.balance),
+      ownerCount: info.accountData.ownerCount,
+      baseReserveDrops: BigInt.from((ledger.reserveBaseXrp * 1000000).round()),
+      incrementDrops: BigInt.from((ledger.reserveIncXrp * 1000000).round()),
+    );
+  }
+
+  /// Fetch validated offers currently owned by [address].
+  Future<List<AccountOffer>> fetchAccountOffers(String address) async {
+    final result = await _requireRpc().request(
+      RichListAccountOffersRequest(account: address, limit: 200),
+    );
+    final rows = result['offers'] as List? ?? const [];
+    return [
+      for (final raw in rows)
+        AccountOffer.fromJson({
+          'flags': raw['Flags'] ?? raw['flags'] ?? 0,
+          'seq': raw['Sequence'] ?? raw['seq'],
+          'taker_gets': raw['TakerGets'] ?? raw['taker_gets'],
+          'taker_pays': raw['TakerPays'] ?? raw['taker_pays'],
+          'quality': raw['quality'] ?? '',
+          'expiration': raw['Expiration'] ?? raw['expiration'],
+        }),
+    ];
+  }
+
+  /// Fetch one validated side of an order book. The caller supplies the
+  /// currency descriptors because `book_offers` treats XRP as native currency
+  /// and issued assets as `{currency, issuer}` objects.
+  Future<Map<String, dynamic>> fetchBookOffers({
+    required BaseCurrency takerGets,
+    required BaseCurrency takerPays,
+    int limit = 20,
+  }) async {
+    return _requireRpc().request(
+      RichListBookOffersRequest(
+        takerGets: takerGets.toJson(),
+        takerPays: takerPays.toJson(),
+        limit: limit,
+      ),
+    );
+  }
+
+  /// Index of the ledger currently being built.
+  ///
+  /// The reconciler compares this against a transaction's
+  /// `LastLedgerSequence`: once the network is past that ledger and the
+  /// transaction is still not in a validated one, it can never be validated,
+  /// which is the only safe basis for calling a submission definitively dead.
+  Future<int> fetchCurrentLedgerIndex() async {
+    final rpc = _requireRpc();
+    return rpc.request(XRPRequestLedgerCurrent());
+  }
+
+  Future<int> fetchValidatedLedgerIndex() async {
+    final ledger = (await _requireRpc().request(
+      XRPRequestServerInfo(),
+    )).info.validatedLedger;
+    if (ledger == null) {
+      throw const FormatException('Validated ledger unavailable.');
+    }
+    return ledger.seq;
+  }
+
+  /// Look up one transaction by [hash].
+  ///
+  /// Returns null when the node does not know the transaction (`txnNotFound`).
+  /// That is genuinely ambiguous — the transaction may simply not have reached
+  /// this node yet — so callers must not read it as failure on its own; pair
+  /// it with the `LastLedgerSequence` rule.
+  Future<LedgerTxDetail?> fetchTransaction(String hash) async {
+    final rpc = _requireRpc();
+    try {
+      final result = await rpc.request(XRPRequestTx(transaction: hash));
+      final meta = result.meta ?? result.metaBlob;
+      final tx = result.txJson;
+      return LedgerTxDetail(
+        hash: result.hash,
+        transactionType: tx.transactionType.value,
+        account: tx.account,
+        affectedNodes: [
+          for (final node in meta?.affectedNodes ?? const [])
+            Map<String, dynamic>.from(node.toJson()),
+        ],
+        ledgerIndex: result.ledgerIndex,
+        validated: result.validated,
+        transactionResult: meta?.transactionResult,
+        sequence: tx.sequence,
+        lastLedgerSequence: tx.lastLedgerSequence,
+        feeDrops: tx.fee?.toString(),
+        date: result.date,
+      );
+    } on RPCError catch (e) {
+      if (_isTransactionNotFound(e)) return null;
+      rethrow;
+    }
+  }
+
+  /// Recent transactions affecting [address], **with their metadata**.
+  ///
+  /// `account_tx` includes transactions that merely touched the account, which
+  /// is exactly what is needed to find a stranger's transaction that crossed
+  /// one of our resting offers — that fill appears in no transaction we sent.
+  ///
+  /// Unfunded accounts return an empty list.
+  Future<List<LedgerTxDetail>> fetchAccountTxDetails(
+    String address, {
+    int limit = 50,
+  }) async {
+    final rpc = _requireRpc();
+    try {
+      final result = await rpc.request(
+        XRPRequestAccountTx(
+          account: address,
+          limit: limit,
+          ledgerIndex: null,
+          ledgerIndexMin: -1,
+          ledgerIndexMax: -1,
+        ),
+      );
+      final details = <LedgerTxDetail>[];
+      for (final entry in result.transactions) {
+        final txJson = entry.txJson;
+        final transaction = txJson?.transaction;
+        final hash = entry.hash ?? txJson?.hash;
+        if (transaction == null || hash == null) continue;
+        details.add(
+          LedgerTxDetail(
+            hash: hash,
+            transactionType: transaction.transactionType.value,
+            account: transaction.account,
+            affectedNodes: [
+              for (final node in entry.meta?.affectedNodes ?? const [])
+                Map<String, dynamic>.from(node.toJson()),
+            ],
+            ledgerIndex: entry.ledgerIndex ?? txJson?.ledgerIndex,
+            validated: entry.validated,
+            transactionResult: entry.meta?.transactionResult,
+            sequence: transaction.sequence,
+            lastLedgerSequence: transaction.lastLedgerSequence,
+            feeDrops: transaction.fee?.toString(),
+            date: txJson?.date,
+          ),
+        );
+      }
+      return details;
+    } on RPCError catch (e) {
+      if (_isAccountNotFound(e)) return const [];
+      rethrow;
+    }
+  }
+
   /// Destination flags that affect send safety. Unfunded accounts are allowed.
-  Future<DestinationAccountPolicy> fetchDestinationPolicy(String address) async {
+  Future<DestinationAccountPolicy> fetchDestinationPolicy(
+    String address,
+  ) async {
     final rpc = _requireRpc();
     try {
       final info = await rpc.request(XRPRequestAccountInfo(account: address));
@@ -205,9 +453,7 @@ class XrplRpcClient {
     } on RPCError catch (e) {
       if (!_isAccountNotFound(e)) rethrow;
       // Unfunded account: treat as zero XRP and skip lines.
-      return const [
-        LedgerBalance(currency: 'XRP', value: '0'),
-      ];
+      return const [LedgerBalance(currency: 'XRP', value: '0')];
     }
 
     final balances = <LedgerBalance>[
@@ -215,8 +461,7 @@ class XrplRpcClient {
     ];
 
     try {
-      final lines =
-          await rpc.request(XRPRequestAccountLines(account: address));
+      final lines = await rpc.request(XRPRequestAccountLines(account: address));
       for (final line in lines.lines) {
         balances.add(
           LedgerBalance(
@@ -309,15 +554,22 @@ class XrplRpcClient {
     return amount.toJson().toString();
   }
 
+  /// XRPL `txnNotFound` means this node has no record of the transaction —
+  /// which covers both "never submitted" and "not here yet".
+  static bool _isTransactionNotFound(RPCError error) =>
+      _hasErrorCode(error, 'txnNotFound');
+
   /// XRPL `actNotFound` means the classic address has never been funded.
-  static bool _isAccountNotFound(RPCError error) {
-    if (error.message == 'actNotFound') return true;
+  static bool _isAccountNotFound(RPCError error) =>
+      _hasErrorCode(error, 'actNotFound');
+
+  /// Public rippled nodes report error codes inconsistently — as the message,
+  /// in the JSON-RPC error payload, or only in the rendered string.
+  static bool _hasErrorCode(RPCError error, String code) {
+    if (error.message == code) return true;
     final payload = error.jsonRpcErrpr;
-    if (payload != null) {
-      final code = payload['error']?.toString();
-      if (code == 'actNotFound') return true;
-    }
+    if (payload != null && payload['error']?.toString() == code) return true;
     // Some nodes surface the error only in toString / nested request.
-    return error.toString().contains('actNotFound');
+    return error.toString().contains(code);
   }
 }

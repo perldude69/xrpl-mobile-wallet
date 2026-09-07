@@ -1,6 +1,19 @@
 /// App-wide non-secret knobs (PIN policy, auto-lock, notification channels).
 class AppConfig {
-  static const pinMinLength = 6;
+  /// User-visible app version. Keep in step with `pubspec.yaml` `version:`.
+  static const appVersionName = '2.0.0';
+
+  /// Minimum digits when **setting** a PIN.
+  ///
+  /// The PIN is a cryptographic factor, not just a lockout threshold: a seed
+  /// is sealed under `Argon2id(PIN)` (see `SecretEnvelope`), so an attacker who
+  /// reaches the stored bytes gets an offline brute-force target. 8 digits is
+  /// 10^8 rather than 10^6 — roughly 100x the work for two more keystrokes.
+  /// Do not lower this.
+  ///
+  /// Only `PinService.setPin` / `changePin` enforce it; `verifyPin` does not,
+  /// so an existing shorter PIN keeps working until the user changes it.
+  static const pinMinLength = 8;
   static const autoLockSeconds = 90;
 
   /// PBKDF2-SHA256 iterations for the PIN verifier (same family as export).

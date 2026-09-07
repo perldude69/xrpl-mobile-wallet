@@ -54,3 +54,7 @@ android/.gradle/
 
 # Personal working notes — do not publish
 todo.md
+CLAUDE.local.md
+
+# Claude Code local (per-machine) settings
+.claude/settings.local.json

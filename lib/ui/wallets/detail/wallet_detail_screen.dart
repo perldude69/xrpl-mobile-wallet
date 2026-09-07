@@ -16,6 +16,9 @@ import 'package:xrpl_mobile_wallet/ui/wallets/attach_keys/attach_keys_chooser_sc
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/detail/add_rlusd_button.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/receive/receive_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/trade/trade_dashboard_screen.dart';
+import 'package:xrpl_mobile_wallet/data/xrpl_rpc/testnet_faucet_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WalletDetailScreen extends ConsumerWidget {
   const WalletDetailScreen({super.key, required this.walletId});
@@ -58,8 +61,8 @@ class WalletDetailScreen extends ConsumerWidget {
             onPressed: listState.refreshing
                 ? null
                 : () => ref
-                    .read(walletListControllerProvider.notifier)
-                    .refreshBalances(walletIds: [walletId]),
+                      .read(walletListControllerProvider.notifier)
+                      .refreshBalances(walletIds: [walletId]),
             icon: listState.refreshing
                 ? const SizedBox(
                     width: 20,
@@ -123,7 +126,10 @@ class WalletDetailScreen extends ConsumerWidget {
               const PopupMenuItem(value: 'copy', child: Text('Copy address')),
               if (!a.canSign)
                 const PopupMenuItem(value: 'add_keys', child: Text('Add keys')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete wallet')),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete wallet'),
+              ),
             ],
           ),
         ],
@@ -166,16 +172,16 @@ class WalletDetailScreen extends ConsumerWidget {
                                     a.useLedger
                                         ? 'Ledger'
                                         : a.hasLocalKeys
-                                            ? 'Signing'
-                                            : 'Watch-only',
+                                        ? 'Signing'
+                                        : 'Watch-only',
                                   ),
                                   visualDensity: VisualDensity.compact,
                                   avatar: Icon(
                                     a.useLedger
                                         ? Icons.usb
                                         : a.hasLocalKeys
-                                            ? Icons.key
-                                            : Icons.visibility,
+                                        ? Icons.key
+                                        : Icons.visibility,
                                     size: 16,
                                   ),
                                 ),
@@ -194,9 +200,9 @@ class WalletDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   SelectableText(
                     a.address,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontFamily: 'monospace',
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
                   ),
                 ],
               ),
@@ -213,15 +219,10 @@ class WalletDetailScreen extends ConsumerWidget {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              radius: 14,
-              backgroundColor: a.displayColor,
-            ),
+            leading: CircleAvatar(radius: 14, backgroundColor: a.displayColor),
             title: const Text('Color'),
             subtitle: Text(
-              a.accentColorArgb == null
-                  ? 'Auto (from address)'
-                  : 'Custom',
+              a.accentColorArgb == null ? 'Auto (from address)' : 'Custom',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _editColor(context, ref, a),
@@ -324,10 +325,8 @@ class WalletDetailScreen extends ConsumerWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ReceiveScreen(
-                          address: a.address,
-                          label: a.label,
-                        ),
+                        builder: (_) =>
+                            ReceiveScreen(address: a.address, label: a.label),
                       ),
                     );
                   },
@@ -344,6 +343,72 @@ class WalletDetailScreen extends ConsumerWidget {
               child: AddRlusdButton(account: a),
             ),
           ],
+          if (network == NetworkId.testnet) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  await const TestnetFaucetService().fund(a.address);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Testnet funding requested')),
+                  );
+                  await ref
+                      .read(walletListControllerProvider.notifier)
+                      .refreshBalances(walletIds: [walletId]);
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Testnet faucet request failed'),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.water_drop_outlined),
+              label: const Text('Fund from testnet faucet'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final opened = await launchUrl(
+                  TestnetFaucetService.rlusdFaucetUri,
+                  mode: LaunchMode.externalApplication,
+                );
+                if (!opened && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not open RLUSD faucet'),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Get RLUSD from official faucet'),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                TestnetFaucetService.rlusdBithompFaucetUri,
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Alternative RLUSD faucet (Bithomp)'),
+            ),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TradeDashboardScreen(account: a),
+                ),
+              ),
+              icon: const Icon(Icons.swap_horiz),
+              label: const Text('Trade'),
+            ),
+          ),
           const SizedBox(height: 24),
           Text('Balances', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -355,35 +420,33 @@ class WalletDetailScreen extends ConsumerWidget {
               ),
             )
           else
-            ...balances.map(
-              (b) {
-                final title = CurrencyDisplay.title(
-                  b.currency,
-                  issuer: b.issuer,
-                );
-                final symbol = CurrencyDisplay.symbol(
-                  b.currency,
-                  issuer: b.issuer,
-                );
-                return Card(
-                  child: ListTile(
-                    title: Text(title),
-                    subtitle: b.issuer == null
-                        ? (b.currency == symbol
+            ...balances.map((b) {
+              final title = CurrencyDisplay.title(b.currency, issuer: b.issuer);
+              final symbol = CurrencyDisplay.symbol(
+                b.currency,
+                issuer: b.issuer,
+              );
+              return Card(
+                child: ListTile(
+                  title: Text(title),
+                  subtitle: b.issuer == null
+                      ? (b.currency == symbol
                             ? null
-                            : Text(b.currency, style: const TextStyle(fontSize: 11)))
-                        : Text(
-                            b.issuer!,
-                            style: const TextStyle(fontFamily: 'monospace'),
-                          ),
-                    trailing: Text(
-                      '${b.value} $symbol',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                            : Text(
+                                b.currency,
+                                style: const TextStyle(fontSize: 11),
+                              ))
+                      : Text(
+                          b.issuer!,
+                          style: const TextStyle(fontFamily: 'monospace'),
+                        ),
+                  trailing: Text(
+                    '${b.value} $symbol',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            }),
           const SizedBox(height: 24),
           _RecentActivitySection(walletId: walletId),
         ],
@@ -448,9 +511,9 @@ class WalletDetailScreen extends ConsumerWidget {
           .updateLabel(a.id, result);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -484,7 +547,9 @@ class WalletDetailScreen extends ConsumerWidget {
       );
       if (ok != true) return;
     }
-    await ref.read(walletListControllerProvider.notifier).setUseLedger(
+    await ref
+        .read(walletListControllerProvider.notifier)
+        .setUseLedger(
           a.id,
           useLedger: enabled,
           ledgerAccountIndex: a.ledgerAccountIndex,
@@ -508,8 +573,7 @@ class WalletDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     WalletAccount a,
   ) async {
-    final controller =
-        TextEditingController(text: '${a.ledgerAccountIndex}');
+    final controller = TextEditingController(text: '${a.ledgerAccountIndex}');
     final raw = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -544,11 +608,9 @@ class WalletDetailScreen extends ConsumerWidget {
       );
       return;
     }
-    await ref.read(walletListControllerProvider.notifier).setUseLedger(
-          a.id,
-          useLedger: true,
-          ledgerAccountIndex: idx,
-        );
+    await ref
+        .read(walletListControllerProvider.notifier)
+        .setUseLedger(a.id, useLedger: true, ledgerAccountIndex: idx);
   }
 
   Future<void> _editColor(
@@ -644,8 +706,8 @@ class _RecentActivitySection extends ConsumerWidget {
               onPressed: activity.refreshing
                   ? null
                   : () => ref
-                      .read(activityControllerProvider.notifier)
-                      .refreshFromNetwork(),
+                        .read(activityControllerProvider.notifier)
+                        .refreshFromNetwork(),
               child: const Text('Refresh'),
             ),
           ],

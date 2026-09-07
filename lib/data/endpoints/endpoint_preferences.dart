@@ -41,11 +41,11 @@ class CustomEndpoint {
   String get host => EndpointUrl.hostOf(url);
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'label': label,
-        'kind': kind.name,
-        'url': url,
-      };
+    'id': id,
+    'label': label,
+    'kind': kind.name,
+    'url': url,
+  };
 
   factory CustomEndpoint.fromJson(Map<String, dynamic> json) {
     final kindName = json['kind']?.toString() ?? EndpointKind.http.name;
@@ -67,10 +67,7 @@ class EndpointUrl {
   EndpointUrl._();
 
   /// `null` when [url] is valid for [kind]; otherwise a short error string.
-  static String? validate({
-    required EndpointKind kind,
-    required String url,
-  }) {
+  static String? validate({required EndpointKind kind, required String url}) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) return 'Enter a URL';
     final uri = Uri.tryParse(trimmed);
@@ -109,13 +106,26 @@ class EndpointUrl {
 /// fixed and not stored. Custom URLs persist as JSON in SharedPreferences.
 class EndpointPreferences {
   EndpointPreferences({SharedPreferences? prefs, Uuid? uuid})
-      : _prefs = prefs,
-        _uuid = uuid ?? const Uuid();
+    : _prefs = prefs,
+      _uuid = uuid ?? const Uuid();
 
   SharedPreferences? _prefs;
   final Uuid _uuid;
 
+  /// Injected only during a trusted local build. Never commit the bearer
+  /// token or show the query string in status UI.
+  static const _wssToken = String.fromEnvironment('WSS_TOKEN');
+  static const _defaultsMigrationKey = 'endpoint_defaults_migrated_v2';
+  static String get _richListWssUrl => _wssToken.isEmpty
+      ? 'wss://wss.rich-list.info'
+      : 'wss://wss.rich-list.info/?token=$_wssToken';
+
   /// Mainnet HTTP JSON-RPC catalog (order = default preference).
+  ///
+  /// A neutral public cluster leads. `rpc.rich-list.info` is maintainer-operated
+  /// and kept as an opt-in choice only — never the default primary, so a stock
+  /// install does not route every address query and signed-transaction submit
+  /// through a single first-party host (XRW-27).
   static const mainnetHttpCatalog = <EndpointOption>[
     EndpointOption(
       id: 'cluster',
@@ -129,10 +139,16 @@ class EndpointPreferences {
       host: 'mainnet.xrpl-rpc.com',
       url: 'https://mainnet.xrpl-rpc.com/',
     ),
+    EndpointOption(
+      id: 'rich-list',
+      label: 'rpc.rich-list.info (maintainer)',
+      host: 'rpc.rich-list.info',
+      url: 'https://rpc.rich-list.info/',
+    ),
   ];
 
   /// Mainnet WSS catalog (public servers only).
-  static const mainnetWssCatalog = <EndpointOption>[
+  static final mainnetWssCatalog = <EndpointOption>[
     EndpointOption(
       id: 'cluster',
       label: 'xrplcluster.com',
@@ -145,13 +161,19 @@ class EndpointPreferences {
       host: 'mainnet.xrpl-rpc.com',
       url: 'wss://mainnet.xrpl-rpc.com',
     ),
+    EndpointOption(
+      id: 'rich-list',
+      label: 'wss.rich-list.info (maintainer)',
+      host: 'wss.rich-list.info',
+      url: _richListWssUrl,
+    ),
   ];
 
-  static List<String> get defaultHttpIds =>
-      mainnetHttpCatalog.map((e) => e.id).toList();
+  /// Ids enabled on a stock install. Excludes `rich-list` (maintainer-operated):
+  /// it is in the catalog for users who opt in, not in the default selection.
+  static List<String> get defaultHttpIds => const ['rich-list'];
 
-  static List<String> get defaultWssIds =>
-      mainnetWssCatalog.map((e) => e.id).toList();
+  static List<String> get defaultWssIds => const ['rich-list'];
 
   Future<SharedPreferences> _ensure() async {
     return _prefs ??= await SharedPreferences.getInstance();
@@ -160,28 +182,58 @@ class EndpointPreferences {
   Future<List<String>> selectedHttpIds() async {
     final p = await _ensure();
     final raw = p.getString(StorageKeys.mainnetHttpEndpointIds);
+    if (p.getBool(_defaultsMigrationKey) != true &&
+        (raw == 'cluster,ankr' || raw == 'ankr,cluster')) {
+      await p.setString(
+        StorageKeys.mainnetHttpEndpointIds,
+        defaultHttpIds.join(','),
+      );
+      await p.setBool(_defaultsMigrationKey, true);
+      return defaultHttpIds;
+    }
     return _parseIds(raw, defaultHttpIds, mainnetHttpCatalog.map((e) => e.id));
   }
 
   Future<List<String>> selectedWssIds() async {
     final p = await _ensure();
     final raw = p.getString(StorageKeys.mainnetWssEndpointIds);
+    if (p.getBool(_defaultsMigrationKey) != true &&
+        (raw == 'cluster,ankr' || raw == 'ankr,cluster')) {
+      await p.setString(
+        StorageKeys.mainnetWssEndpointIds,
+        defaultWssIds.join(','),
+      );
+      await p.setBool(_defaultsMigrationKey, true);
+      return defaultWssIds;
+    }
     return _parseIds(raw, defaultWssIds, mainnetWssCatalog.map((e) => e.id));
   }
 
   /// Persist HTTP selection. [ids] must be non-empty; unknown ids dropped.
+  /// An empty result falls back to the stock default set, not the raw catalog,
+  /// so deselecting everything never silently re-enables the maintainer host.
   Future<List<String>> setHttpIds(List<String> ids) async {
-    final cleaned = _clean(ids, mainnetHttpCatalog.map((e) => e.id));
+    final cleaned = _clean(
+      ids,
+      mainnetHttpCatalog.map((e) => e.id),
+      fallback: defaultHttpIds,
+    );
     final p = await _ensure();
     await p.setString(StorageKeys.mainnetHttpEndpointIds, cleaned.join(','));
+    await p.setBool(_defaultsMigrationKey, true);
     return cleaned;
   }
 
   /// Persist WSS selection. [ids] must be non-empty; unknown ids dropped.
   Future<List<String>> setWssIds(List<String> ids) async {
-    final cleaned = _clean(ids, mainnetWssCatalog.map((e) => e.id));
+    final cleaned = _clean(
+      ids,
+      mainnetWssCatalog.map((e) => e.id),
+      fallback: defaultWssIds,
+    );
     final p = await _ensure();
     await p.setString(StorageKeys.mainnetWssEndpointIds, cleaned.join(','));
+    await p.setBool(_defaultsMigrationKey, true);
     return cleaned;
   }
 
@@ -286,7 +338,10 @@ class EndpointPreferences {
     kindIds.insert(to, moved);
 
     final byId = {for (final e in all) e.id: e};
-    final others = [for (final e in all) if (e.kind != kind) e];
+    final others = [
+      for (final e in all)
+        if (e.kind != kind) e,
+    ];
     final reorderedKind = [for (final kid in kindIds) byId[kid]!];
     // Keep relative order of the other kind; rebuild with this kind in new order
     // at the positions they originally occupied among their own kind.
@@ -315,6 +370,7 @@ class EndpointPreferences {
     final builtIn = await _builtInUrls(
       ids: await selectedHttpIds(),
       catalog: mainnetHttpCatalog,
+      fallbackIds: defaultHttpIds,
     );
     final custom = (await customOfKind(EndpointKind.http)).map((e) => e.url);
     return [...builtIn, ...custom];
@@ -328,6 +384,7 @@ class EndpointPreferences {
     final builtIn = await _builtInUrls(
       ids: await selectedWssIds(),
       catalog: mainnetWssCatalog,
+      fallbackIds: defaultWssIds,
     );
     final custom = (await customOfKind(EndpointKind.wss)).map((e) => e.url);
     return [...builtIn, ...custom];
@@ -342,6 +399,7 @@ class EndpointPreferences {
   Future<List<String>> _builtInUrls({
     required List<String> ids,
     required List<EndpointOption> catalog,
+    required List<String> fallbackIds,
   }) async {
     final byId = {for (final e in catalog) e.id: e};
     final urls = [
@@ -349,7 +407,10 @@ class EndpointPreferences {
         if (byId.containsKey(id)) byId[id]!.url,
     ];
     if (urls.isEmpty) {
-      return [for (final e in catalog) e.url];
+      return [
+        for (final id in fallbackIds)
+          if (byId.containsKey(id)) byId[id]!.url,
+      ];
     }
     return urls;
   }
@@ -378,7 +439,11 @@ class EndpointPreferences {
     return parsed;
   }
 
-  static List<String> _clean(List<String> ids, Iterable<String> allowed) {
+  static List<String> _clean(
+    List<String> ids,
+    Iterable<String> allowed, {
+    List<String>? fallback,
+  }) {
     final allowedSet = allowed.toSet();
     final seen = <String>{};
     final out = <String>[];
@@ -388,7 +453,7 @@ class EndpointPreferences {
       out.add(id);
     }
     if (out.isEmpty) {
-      return allowed.toList();
+      return fallback ?? allowed.toList();
     }
     return out;
   }
