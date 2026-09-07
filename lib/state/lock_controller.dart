@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
+import 'package:xrpl_mobile_wallet/config/app_config.dart';
+import 'package:xrpl_mobile_wallet/data/database/app_database.dart';
 import 'package:xrpl_mobile_wallet/data/secure/pin_service.dart';
+import 'package:xrpl_mobile_wallet/data/secure/key_vault.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 
 enum LockPhase { loading, needsSetup, locked, unlocked }
@@ -20,12 +20,13 @@ enum UnlockOutcome {
 }
 
 class LockController extends StateNotifier<LockPhase> {
-  LockController(this._pin) : super(LockPhase.loading) {
+  LockController(this._pin, this._vault, this._db) : super(LockPhase.loading) {
     _init();
   }
 
   final PinService _pin;
-  final _auth = LocalAuthentication();
+  final KeyVault _vault;
+  final AppDatabase _db;
 
   Future<void> _init() async {
     state = await _pin.hasPin() ? LockPhase.locked : LockPhase.needsSetup;
@@ -33,6 +34,7 @@ class LockController extends StateNotifier<LockPhase> {
 
   Future<void> setupPin(String pin) async {
     await _pin.setPin(pin);
+    await _unlockVault(pin);
     state = LockPhase.unlocked;
   }
 
@@ -44,6 +46,11 @@ class LockController extends StateNotifier<LockPhase> {
     final result = await _pin.checkUnlockPin(pin);
     switch (result) {
       case PinCheckResult.wallet:
+        try {
+          await _unlockVault(pin);
+        } catch (_) {
+          return UnlockOutcome.failed;
+        }
         state = LockPhase.unlocked;
         return UnlockOutcome.wallet;
       case PinCheckResult.game:
@@ -61,7 +68,23 @@ class LockController extends StateNotifier<LockPhase> {
     required String currentPin,
     required String newPin,
   }) async {
-    return _pin.changePin(currentPin: currentPin, newPin: newPin);
+    if (!PinService.isPinFormatValid(newPin)) {
+      throw ArgumentError(
+        'PIN must be at least ${AppConfig.pinMinLength} digits',
+      );
+    }
+    if (await _pin.verifyGamePin(newPin)) {
+      throw ArgumentError('Wallet PIN must differ from the game PIN');
+    }
+    if (!await _pin.verifyPin(currentPin)) return false;
+    final newKey = await _pin.deriveMasterKey(newPin);
+    final wallets = await _db.getAllWallets();
+    await _vault.rekeySecrets(
+      walletIds: wallets.map((wallet) => wallet.id).toList(),
+      newKey: newKey,
+    );
+    await _pin.setPin(newPin);
+    return true;
   }
 
   /// Set or replace game PIN. Requires correct wallet PIN.
@@ -77,50 +100,29 @@ class LockController extends StateNotifier<LockPhase> {
     return _pin.clearGamePin(walletPin: walletPin);
   }
 
-  Future<bool> isBiometricsEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(StorageKeys.biometricsEnabled) ?? false;
-  }
-
-  Future<void> setBiometricsEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(StorageKeys.biometricsEnabled, enabled);
-  }
-
-  Future<bool> canCheckBiometrics() async {
-    try {
-      return await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> unlockWithBiometrics() async {
-    if (!await isBiometricsEnabled()) return false;
-    try {
-      final ok = await _auth.authenticate(
-        localizedReason: 'Unlock Zerp Wallet',
-        biometricOnly: true,
-        persistAcrossBackgrounding: true,
-      );
-      if (ok) state = LockPhase.unlocked;
-      return ok;
-    } catch (_) {
-      return false;
-    }
-  }
-
   void lock() {
+    _vault.lock();
     if (state == LockPhase.unlocked) state = LockPhase.locked;
   }
 
   /// After wipe: no PIN remains; send user to first-run setup.
   void resetToNeedsSetup() {
+    _vault.lock();
     state = LockPhase.needsSetup;
+  }
+
+  Future<void> _unlockVault(String pin) async {
+    final masterKey = await _pin.deriveMasterKey(pin);
+    _vault.unlock(masterKey);
   }
 }
 
-final lockControllerProvider =
-    StateNotifierProvider<LockController, LockPhase>((ref) {
-  return LockController(ref.watch(pinServiceProvider));
-});
+final lockControllerProvider = StateNotifierProvider<LockController, LockPhase>(
+  (ref) {
+    return LockController(
+      ref.watch(pinServiceProvider),
+      ref.watch(keyVaultProvider),
+      ref.watch(databaseProvider),
+    );
+  },
+);

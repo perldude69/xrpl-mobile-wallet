@@ -48,7 +48,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   bool _feeBusy = false;
   DestinationAccountPolicy? _destPolicy;
 
-  final _paymentService = PaymentService();
+  late final PaymentService _paymentService;
 
   bool get _hasPresetDestination {
     final dest = widget.presetDestination;
@@ -58,6 +58,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   @override
   void initState() {
     super.initState();
+    _paymentService = PaymentService(database: ref.read(databaseProvider));
     assert(
       widget.account.canSign,
       'SendScreen requires a signing or Ledger-enabled wallet',
@@ -392,6 +393,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       final dest = _destinationController.text.trim();
       final tag = PaymentValidators.parseDestinationTag(_tagController.text);
       final account = widget.account;
+      final network = ref.read(networkControllerProvider).network.name;
 
       final PaymentSubmitResult result;
       if (account.useLedger) {
@@ -412,6 +414,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         if (selected.currency == 'XRP') {
           result = await _paymentService.sendXrp(
             walletId: account.id,
+            network: network,
             secret: secret,
             fromAddress: account.address,
             destination: dest,
@@ -423,6 +426,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         } else {
           result = await _paymentService.sendIou(
             walletId: account.id,
+            network: network,
             secret: secret,
             fromAddress: account.address,
             destination: dest,
@@ -453,7 +457,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = widget.account.useLedger
+        _error = e is PaymentOperationException && e.submissionUncertain
+            ? 'The transaction may have reached the ledger. Do not retry yet; '
+                  'check the account activity or transaction hash.'
+            : widget.account.useLedger
             ? LedgerXrpDevice.userFacingError(e)
             : userFacingError(e);
         _busy = false;
@@ -503,11 +510,23 @@ class _SendScreenState extends ConsumerState<SendScreen> {
           blob,
           accountIndex: account.ledgerAccountIndex,
         );
+        if (!verifyLedgerSignature(
+          publicKeyHex: got.publicKeyHex,
+          transactionBlob: blob,
+          derSignature: der,
+        )) {
+          throw LedgerDeviceException(
+            'Ledger returned an invalid signature.',
+            step: 'sign',
+          );
+        }
         return BytesUtils.toHexString(der, lowerCase: false);
       }
 
       if (selected.currency == 'XRP') {
         return await _paymentService.sendXrpWithLedger(
+          walletId: account.id,
+          network: ref.read(networkControllerProvider).network.name,
           fromAddress: account.address,
           destination: dest,
           destinationTag: tag,
@@ -519,6 +538,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         );
       }
       return await _paymentService.sendIouWithLedger(
+        walletId: account.id,
+        network: ref.read(networkControllerProvider).network.name,
         fromAddress: account.address,
         destination: dest,
         destinationTag: tag,

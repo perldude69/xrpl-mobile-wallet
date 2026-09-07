@@ -3468,6 +3468,621 @@ class TradeFillsCompanion extends UpdateCompanion<TradeFill> {
   }
 }
 
+class $PendingPaymentsTable extends PendingPayments
+    with TableInfo<$PendingPaymentsTable, PendingPayment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingPaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _walletIdMeta = const VerificationMeta(
+    'walletId',
+  );
+  @override
+  late final GeneratedColumn<String> walletId = GeneratedColumn<String>(
+    'wallet_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _networkMeta = const VerificationMeta(
+    'network',
+  );
+  @override
+  late final GeneratedColumn<String> network = GeneratedColumn<String>(
+    'network',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _txHashMeta = const VerificationMeta('txHash');
+  @override
+  late final GeneratedColumn<String> txHash = GeneratedColumn<String>(
+    'tx_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _signedBlobMeta = const VerificationMeta(
+    'signedBlob',
+  );
+  @override
+  late final GeneratedColumn<String> signedBlob = GeneratedColumn<String>(
+    'signed_blob',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastLedgerSequenceMeta =
+      const VerificationMeta('lastLedgerSequence');
+  @override
+  late final GeneratedColumn<int> lastLedgerSequence = GeneratedColumn<int>(
+    'last_ledger_sequence',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    walletId,
+    network,
+    txHash,
+    signedBlob,
+    lastLedgerSequence,
+    status,
+    lastError,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingPayment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('wallet_id')) {
+      context.handle(
+        _walletIdMeta,
+        walletId.isAcceptableOrUnknown(data['wallet_id']!, _walletIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_walletIdMeta);
+    }
+    if (data.containsKey('network')) {
+      context.handle(
+        _networkMeta,
+        network.isAcceptableOrUnknown(data['network']!, _networkMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_networkMeta);
+    }
+    if (data.containsKey('tx_hash')) {
+      context.handle(
+        _txHashMeta,
+        txHash.isAcceptableOrUnknown(data['tx_hash']!, _txHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_txHashMeta);
+    }
+    if (data.containsKey('signed_blob')) {
+      context.handle(
+        _signedBlobMeta,
+        signedBlob.isAcceptableOrUnknown(data['signed_blob']!, _signedBlobMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_signedBlobMeta);
+    }
+    if (data.containsKey('last_ledger_sequence')) {
+      context.handle(
+        _lastLedgerSequenceMeta,
+        lastLedgerSequence.isAcceptableOrUnknown(
+          data['last_ledger_sequence']!,
+          _lastLedgerSequenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingPayment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingPayment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      walletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wallet_id'],
+      )!,
+      network: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network'],
+      )!,
+      txHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tx_hash'],
+      )!,
+      signedBlob: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signed_blob'],
+      )!,
+      lastLedgerSequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_ledger_sequence'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingPaymentsTable createAlias(String alias) {
+    return $PendingPaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingPayment extends DataClass implements Insertable<PendingPayment> {
+  final String id;
+  final String walletId;
+  final String network;
+  final String txHash;
+  final String signedBlob;
+  final int? lastLedgerSequence;
+  final String status;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const PendingPayment({
+    required this.id,
+    required this.walletId,
+    required this.network,
+    required this.txHash,
+    required this.signedBlob,
+    this.lastLedgerSequence,
+    required this.status,
+    this.lastError,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['wallet_id'] = Variable<String>(walletId);
+    map['network'] = Variable<String>(network);
+    map['tx_hash'] = Variable<String>(txHash);
+    map['signed_blob'] = Variable<String>(signedBlob);
+    if (!nullToAbsent || lastLedgerSequence != null) {
+      map['last_ledger_sequence'] = Variable<int>(lastLedgerSequence);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PendingPaymentsCompanion toCompanion(bool nullToAbsent) {
+    return PendingPaymentsCompanion(
+      id: Value(id),
+      walletId: Value(walletId),
+      network: Value(network),
+      txHash: Value(txHash),
+      signedBlob: Value(signedBlob),
+      lastLedgerSequence: lastLedgerSequence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLedgerSequence),
+      status: Value(status),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PendingPayment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingPayment(
+      id: serializer.fromJson<String>(json['id']),
+      walletId: serializer.fromJson<String>(json['walletId']),
+      network: serializer.fromJson<String>(json['network']),
+      txHash: serializer.fromJson<String>(json['txHash']),
+      signedBlob: serializer.fromJson<String>(json['signedBlob']),
+      lastLedgerSequence: serializer.fromJson<int?>(json['lastLedgerSequence']),
+      status: serializer.fromJson<String>(json['status']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'walletId': serializer.toJson<String>(walletId),
+      'network': serializer.toJson<String>(network),
+      'txHash': serializer.toJson<String>(txHash),
+      'signedBlob': serializer.toJson<String>(signedBlob),
+      'lastLedgerSequence': serializer.toJson<int?>(lastLedgerSequence),
+      'status': serializer.toJson<String>(status),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PendingPayment copyWith({
+    String? id,
+    String? walletId,
+    String? network,
+    String? txHash,
+    String? signedBlob,
+    Value<int?> lastLedgerSequence = const Value.absent(),
+    String? status,
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => PendingPayment(
+    id: id ?? this.id,
+    walletId: walletId ?? this.walletId,
+    network: network ?? this.network,
+    txHash: txHash ?? this.txHash,
+    signedBlob: signedBlob ?? this.signedBlob,
+    lastLedgerSequence: lastLedgerSequence.present
+        ? lastLedgerSequence.value
+        : this.lastLedgerSequence,
+    status: status ?? this.status,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PendingPayment copyWithCompanion(PendingPaymentsCompanion data) {
+    return PendingPayment(
+      id: data.id.present ? data.id.value : this.id,
+      walletId: data.walletId.present ? data.walletId.value : this.walletId,
+      network: data.network.present ? data.network.value : this.network,
+      txHash: data.txHash.present ? data.txHash.value : this.txHash,
+      signedBlob: data.signedBlob.present
+          ? data.signedBlob.value
+          : this.signedBlob,
+      lastLedgerSequence: data.lastLedgerSequence.present
+          ? data.lastLedgerSequence.value
+          : this.lastLedgerSequence,
+      status: data.status.present ? data.status.value : this.status,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingPayment(')
+          ..write('id: $id, ')
+          ..write('walletId: $walletId, ')
+          ..write('network: $network, ')
+          ..write('txHash: $txHash, ')
+          ..write('signedBlob: $signedBlob, ')
+          ..write('lastLedgerSequence: $lastLedgerSequence, ')
+          ..write('status: $status, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    walletId,
+    network,
+    txHash,
+    signedBlob,
+    lastLedgerSequence,
+    status,
+    lastError,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingPayment &&
+          other.id == this.id &&
+          other.walletId == this.walletId &&
+          other.network == this.network &&
+          other.txHash == this.txHash &&
+          other.signedBlob == this.signedBlob &&
+          other.lastLedgerSequence == this.lastLedgerSequence &&
+          other.status == this.status &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PendingPaymentsCompanion extends UpdateCompanion<PendingPayment> {
+  final Value<String> id;
+  final Value<String> walletId;
+  final Value<String> network;
+  final Value<String> txHash;
+  final Value<String> signedBlob;
+  final Value<int?> lastLedgerSequence;
+  final Value<String> status;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PendingPaymentsCompanion({
+    this.id = const Value.absent(),
+    this.walletId = const Value.absent(),
+    this.network = const Value.absent(),
+    this.txHash = const Value.absent(),
+    this.signedBlob = const Value.absent(),
+    this.lastLedgerSequence = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingPaymentsCompanion.insert({
+    required String id,
+    required String walletId,
+    required String network,
+    required String txHash,
+    required String signedBlob,
+    this.lastLedgerSequence = const Value.absent(),
+    required String status,
+    this.lastError = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       walletId = Value(walletId),
+       network = Value(network),
+       txHash = Value(txHash),
+       signedBlob = Value(signedBlob),
+       status = Value(status),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<PendingPayment> custom({
+    Expression<String>? id,
+    Expression<String>? walletId,
+    Expression<String>? network,
+    Expression<String>? txHash,
+    Expression<String>? signedBlob,
+    Expression<int>? lastLedgerSequence,
+    Expression<String>? status,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (walletId != null) 'wallet_id': walletId,
+      if (network != null) 'network': network,
+      if (txHash != null) 'tx_hash': txHash,
+      if (signedBlob != null) 'signed_blob': signedBlob,
+      if (lastLedgerSequence != null)
+        'last_ledger_sequence': lastLedgerSequence,
+      if (status != null) 'status': status,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingPaymentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? walletId,
+    Value<String>? network,
+    Value<String>? txHash,
+    Value<String>? signedBlob,
+    Value<int?>? lastLedgerSequence,
+    Value<String>? status,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PendingPaymentsCompanion(
+      id: id ?? this.id,
+      walletId: walletId ?? this.walletId,
+      network: network ?? this.network,
+      txHash: txHash ?? this.txHash,
+      signedBlob: signedBlob ?? this.signedBlob,
+      lastLedgerSequence: lastLedgerSequence ?? this.lastLedgerSequence,
+      status: status ?? this.status,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (walletId.present) {
+      map['wallet_id'] = Variable<String>(walletId.value);
+    }
+    if (network.present) {
+      map['network'] = Variable<String>(network.value);
+    }
+    if (txHash.present) {
+      map['tx_hash'] = Variable<String>(txHash.value);
+    }
+    if (signedBlob.present) {
+      map['signed_blob'] = Variable<String>(signedBlob.value);
+    }
+    if (lastLedgerSequence.present) {
+      map['last_ledger_sequence'] = Variable<int>(lastLedgerSequence.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingPaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('walletId: $walletId, ')
+          ..write('network: $network, ')
+          ..write('txHash: $txHash, ')
+          ..write('signedBlob: $signedBlob, ')
+          ..write('lastLedgerSequence: $lastLedgerSequence, ')
+          ..write('status: $status, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3481,6 +4096,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $TradeFillsTable tradeFills = $TradeFillsTable(this);
+  late final $PendingPaymentsTable pendingPayments = $PendingPaymentsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3492,6 +4110,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettingsRows,
     tradeExecutions,
     tradeFills,
+    pendingPayments,
   ];
 }
 
@@ -5184,6 +5803,311 @@ typedef $$TradeFillsTableProcessedTableManager =
       TradeFill,
       PrefetchHooks Function()
     >;
+typedef $$PendingPaymentsTableCreateCompanionBuilder =
+    PendingPaymentsCompanion Function({
+      required String id,
+      required String walletId,
+      required String network,
+      required String txHash,
+      required String signedBlob,
+      Value<int?> lastLedgerSequence,
+      required String status,
+      Value<String?> lastError,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PendingPaymentsTableUpdateCompanionBuilder =
+    PendingPaymentsCompanion Function({
+      Value<String> id,
+      Value<String> walletId,
+      Value<String> network,
+      Value<String> txHash,
+      Value<String> signedBlob,
+      Value<int?> lastLedgerSequence,
+      Value<String> status,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$PendingPaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingPaymentsTable> {
+  $$PendingPaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get network => $composableBuilder(
+    column: $table.network,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signedBlob => $composableBuilder(
+    column: $table.signedBlob,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingPaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingPaymentsTable> {
+  $$PendingPaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get network => $composableBuilder(
+    column: $table.network,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get txHash => $composableBuilder(
+    column: $table.txHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signedBlob => $composableBuilder(
+    column: $table.signedBlob,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingPaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingPaymentsTable> {
+  $$PendingPaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get walletId =>
+      $composableBuilder(column: $table.walletId, builder: (column) => column);
+
+  GeneratedColumn<String> get network =>
+      $composableBuilder(column: $table.network, builder: (column) => column);
+
+  GeneratedColumn<String> get txHash =>
+      $composableBuilder(column: $table.txHash, builder: (column) => column);
+
+  GeneratedColumn<String> get signedBlob => $composableBuilder(
+    column: $table.signedBlob,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastLedgerSequence => $composableBuilder(
+    column: $table.lastLedgerSequence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PendingPaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingPaymentsTable,
+          PendingPayment,
+          $$PendingPaymentsTableFilterComposer,
+          $$PendingPaymentsTableOrderingComposer,
+          $$PendingPaymentsTableAnnotationComposer,
+          $$PendingPaymentsTableCreateCompanionBuilder,
+          $$PendingPaymentsTableUpdateCompanionBuilder,
+          (
+            PendingPayment,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingPaymentsTable,
+              PendingPayment
+            >,
+          ),
+          PendingPayment,
+          PrefetchHooks Function()
+        > {
+  $$PendingPaymentsTableTableManager(
+    _$AppDatabase db,
+    $PendingPaymentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingPaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingPaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingPaymentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> walletId = const Value.absent(),
+                Value<String> network = const Value.absent(),
+                Value<String> txHash = const Value.absent(),
+                Value<String> signedBlob = const Value.absent(),
+                Value<int?> lastLedgerSequence = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingPaymentsCompanion(
+                id: id,
+                walletId: walletId,
+                network: network,
+                txHash: txHash,
+                signedBlob: signedBlob,
+                lastLedgerSequence: lastLedgerSequence,
+                status: status,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String walletId,
+                required String network,
+                required String txHash,
+                required String signedBlob,
+                Value<int?> lastLedgerSequence = const Value.absent(),
+                required String status,
+                Value<String?> lastError = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PendingPaymentsCompanion.insert(
+                id: id,
+                walletId: walletId,
+                network: network,
+                txHash: txHash,
+                signedBlob: signedBlob,
+                lastLedgerSequence: lastLedgerSequence,
+                status: status,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingPaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingPaymentsTable,
+      PendingPayment,
+      $$PendingPaymentsTableFilterComposer,
+      $$PendingPaymentsTableOrderingComposer,
+      $$PendingPaymentsTableAnnotationComposer,
+      $$PendingPaymentsTableCreateCompanionBuilder,
+      $$PendingPaymentsTableUpdateCompanionBuilder,
+      (
+        PendingPayment,
+        BaseReferences<_$AppDatabase, $PendingPaymentsTable, PendingPayment>,
+      ),
+      PendingPayment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5200,4 +6124,6 @@ class $AppDatabaseManager {
       $$TradeExecutionsTableTableManager(_db, _db.tradeExecutions);
   $$TradeFillsTableTableManager get tradeFills =>
       $$TradeFillsTableTableManager(_db, _db.tradeFills);
+  $$PendingPaymentsTableTableManager get pendingPayments =>
+      $$PendingPaymentsTableTableManager(_db, _db.pendingPayments);
 }

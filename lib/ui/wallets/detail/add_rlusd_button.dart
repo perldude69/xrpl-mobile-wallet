@@ -170,6 +170,16 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
           blob,
           accountIndex: account.ledgerAccountIndex,
         );
+        if (!verifyLedgerSignature(
+          publicKeyHex: got.publicKeyHex,
+          transactionBlob: blob,
+          derSignature: der,
+        )) {
+          throw LedgerDeviceException(
+            'Ledger returned an invalid signature.',
+            step: 'sign',
+          );
+        }
         return BytesUtils.toHexString(der, lowerCase: false);
       }
 

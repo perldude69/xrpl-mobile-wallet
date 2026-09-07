@@ -81,6 +81,43 @@ void checkApduStatus(Uint8List response, {String step = 'APDU'}) {
   throw LedgerDeviceException(msg, step: step, statusWord: sw);
 }
 
+/// Returns true only for a canonical DER ECDSA signature.
+bool isCanonicalLedgerSignature(List<int> bytes) {
+  if (bytes.length < 8 || bytes[0] != 0x30 || bytes[1] != bytes.length - 2) {
+    return false;
+  }
+  var i = 2;
+  for (var integer = 0; integer < 2; integer++) {
+    if (i + 2 > bytes.length || bytes[i++] != 0x02) return false;
+    final length = bytes[i++];
+    if (length == 0 || i + length > bytes.length) return false;
+    if (bytes[i] & 0x80 != 0) return false;
+    if (length > 1 && bytes[i] == 0 && bytes[i + 1] & 0x80 == 0) {
+      return false;
+    }
+    i += length;
+  }
+  return i == bytes.length;
+}
+
+/// Verify a Ledger signature against the exact STObject sent to the device.
+bool verifyLedgerSignature({
+  required String publicKeyHex,
+  required List<int> transactionBlob,
+  required List<int> derSignature,
+}) {
+  if (!isCanonicalLedgerSignature(derSignature)) return false;
+  try {
+    final verifier = XrpVerifier.fromKeyBytes(
+      BytesUtils.fromHexString(publicKeyHex),
+      EllipticCurveTypes.secp256k1,
+    );
+    return verifier.verify(transactionBlob, derSignature);
+  } catch (_) {
+    return false;
+  }
+}
+
 Uint8List apduPayload(Uint8List response) {
   if (response.length < 2) return response;
   return response.sublist(0, response.length - 2);
@@ -471,14 +508,18 @@ class LedgerXrpDevice {
   }
 
   static Uint8List _requireSignature(Uint8List payload) {
-    if (payload.length < 2) {
+    if (!isCanonicalLedgerSignature(payload)) {
       throw LedgerDeviceException(
-        'Empty Ledger signature (approve the transaction on the device).',
+        'Malformed Ledger signature (approve the transaction on the device).',
         step: 'sign',
       );
     }
     return payload;
   }
+
+  /// Ledger XRP returns a strict DER ECDSA signature: SEQUENCE(INTEGER r,
+  /// INTEGER s). Reject alternate encodings before they reach transaction
+  /// serialization.
 
   /// Map failures to short user-facing copy (keeps step detail when useful).
   static String userFacingError(Object error) {

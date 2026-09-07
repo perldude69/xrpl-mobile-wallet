@@ -71,6 +71,7 @@ class _LockLifecycleState extends ConsumerState<LockLifecycle>
         await watcher.ensureStartedIfEnabled();
       } catch (_) {}
       _reconcileTrades();
+      _reconcilePayments();
     });
   }
 
@@ -88,6 +89,17 @@ class _LockLifecycleState extends ConsumerState<LockLifecycle>
       try {
         await ref.read(tradeReconcilerProvider).reconcileAll();
       } catch (_) {}
+    });
+  }
+
+  void _reconcilePayments() {
+    Future(() async {
+      try {
+        await ref.read(paymentReconcilerProvider).reconcileAll();
+        ref.invalidate(pendingPaymentsProvider);
+      } catch (_) {
+        // A later lifecycle pass can retry reads; never resubmit a payment.
+      }
     });
   }
 

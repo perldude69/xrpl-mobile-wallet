@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
 import 'package:xrpl_mobile_wallet/data/secure/secure_storage.dart';
+import 'package:xrpl_mobile_wallet/data/secure/pin_key.dart';
 
 /// Result of checking an unlock PIN against wallet and optional game PIN.
 enum PinCheckResult {
@@ -22,7 +23,7 @@ enum PinCheckResult {
 
 class PinService {
   PinService({FlutterSecureStorage? storage})
-      : _kv = _FlutterSecureKv(storage ?? kAppSecureStorage);
+    : _kv = _FlutterSecureKv(storage ?? kAppSecureStorage);
 
   /// In-memory store for unit tests (no platform channels).
   PinService.memory([Map<String, String>? map]) : _kv = _MapKv(map ?? {});
@@ -83,6 +84,18 @@ class PinService {
     return h != null && h.isNotEmpty;
   }
 
+  /// Derive the session key used to open wallet secret envelopes.
+  Future<PinMasterKey> deriveMasterKey(String pin) async {
+    final stored = await _kv.read(StorageKeys.pinKdf);
+    final params = stored == null
+        ? PinKdfParams.generate()
+        : PinKdfParams.decode(stored);
+    if (stored == null) {
+      await _kv.write(StorageKeys.pinKdf, params.encode());
+    }
+    return PinKey.derive(pin: pin, params: params);
+  }
+
   Future<bool> hasGamePin() async {
     final h = await _kv.read(StorageKeys.gamePinHash);
     return h != null && h.isNotEmpty;
@@ -91,7 +104,8 @@ class PinService {
   Future<void> setPin(String pin) async {
     if (!isPinFormatValid(pin)) {
       throw ArgumentError(
-          'PIN must be at least ${AppConfig.pinMinLength} digits');
+        'PIN must be at least ${AppConfig.pinMinLength} digits',
+      );
     }
     if (await verifyGamePin(pin)) {
       throw ArgumentError('Wallet PIN must differ from the game PIN');
@@ -137,7 +151,8 @@ class PinService {
     if (!await verifyPin(walletPin)) return false;
     if (!isPinFormatValid(gamePin)) {
       throw ArgumentError(
-          'Game PIN must be at least ${AppConfig.pinMinLength} digits');
+        'Game PIN must be at least ${AppConfig.pinMinLength} digits',
+      );
     }
     if (gamePin == walletPin || await verifyPin(gamePin)) {
       throw ArgumentError('Game PIN must differ from the wallet PIN');
@@ -182,6 +197,7 @@ class PinService {
     await _kv.delete(StorageKeys.pinSalt);
     await _kv.delete(StorageKeys.gamePinHash);
     await _kv.delete(StorageKeys.gamePinSalt);
+    await _kv.delete(StorageKeys.pinKdf);
   }
 
   /// Classify an unlock attempt. Wallet PIN takes precedence if both matched
@@ -199,8 +215,14 @@ class PinService {
   }) async {
     final salt = generateSalt();
     final hash = await hashPin(pin, salt);
-    await _kv.write(saltKey, salt);
-    await _kv.write(hashKey, hash);
+    // New records are written as one value so a process kill cannot leave a
+    // new hash paired with an old salt. The separate keys remain readable for
+    // migration of existing installs.
+    await _kv.write(
+      hashKey,
+      jsonEncode(<String, String>{'v': '2', 'salt': salt, 'hash': hash}),
+    );
+    await _kv.delete(saltKey);
   }
 
   Future<bool> _verifyAndMaybeUpgrade({
@@ -210,7 +232,24 @@ class PinService {
   }) async {
     final salt = await _kv.read(saltKey);
     final expected = await _kv.read(hashKey);
-    if (salt == null || expected == null) return false;
+    if (expected == null) return false;
+
+    String? recordSalt;
+    String? recordHash;
+    try {
+      final decoded = jsonDecode(expected);
+      if (decoded is Map && decoded['v'] == '2') {
+        recordSalt = decoded['salt']?.toString();
+        recordHash = decoded['hash']?.toString();
+      }
+    } catch (_) {
+      // Existing hash-only records use the legacy two-key format.
+    }
+    if (recordSalt != null && recordHash != null) {
+      final computed = await hashPin(pin, recordSalt);
+      return hashEquals(computed, recordHash);
+    }
+    if (salt == null) return false;
 
     if (isLegacyPinHash(expected)) {
       if (!hashEquals(hashPinLegacy(pin, salt), expected)) return false;

@@ -25,9 +25,21 @@ class KeyNames {
   ];
 
   // XOR-encoded role tags ("wallet-secret", "pin-hash", "pin-salt",
-  // "game-pin-hash", "game-pin-salt").
+  // "game-pin-hash", "game-pin-salt", "pin-kdf").
   static const List<int> _walletTag = <int>[
-    0x2d, 0xa2, 0x1b, 0x72, 0xfe, 0x80, 0x00, 0x1b, 0x3f, 0xa0, 0x05, 0x7b, 0xef, //
+    0x2d,
+    0xa2,
+    0x1b,
+    0x72,
+    0xfe,
+    0x80,
+    0x00,
+    0x1b,
+    0x3f,
+    0xa0,
+    0x05,
+    0x7b,
+    0xef, //
   ];
   static const List<int> _pinHashTag = <int>[
     0x2a, 0xaa, 0x19, 0x33, 0xf3, 0x95, 0x5e, 0x00, //
@@ -36,19 +48,58 @@ class KeyNames {
     0x2a, 0xaa, 0x19, 0x33, 0xe8, 0x95, 0x41, 0x1c, //
   ];
   static const List<int> _gamePinHashTag = <int>[
-    0x3d, 0xa2, 0x1a, 0x7b, 0xb6, 0x84, 0x44, 0x06, 0x77, 0xab, 0x16, 0x6d, 0xf3, //
+    0x3d,
+    0xa2,
+    0x1a,
+    0x7b,
+    0xb6,
+    0x84,
+    0x44,
+    0x06,
+    0x77,
+    0xab,
+    0x16,
+    0x6d,
+    0xf3, //
   ];
   static const List<int> _gamePinSaltTag = <int>[
-    0x3d, 0xa2, 0x1a, 0x7b, 0xb6, 0x84, 0x44, 0x06, 0x77, 0xb0, 0x16, 0x72, 0xef, //
+    0x3d,
+    0xa2,
+    0x1a,
+    0x7b,
+    0xb6,
+    0x84,
+    0x44,
+    0x06,
+    0x77,
+    0xb0,
+    0x16,
+    0x72,
+    0xef, //
+  ];
+  static const List<int> _pinKdfTag = <int>[
+    0x2a,
+    0xaa,
+    0x19,
+    0x33,
+    0xf3,
+    0x95,
+    0x5e,
+    0x00,
+    0x34,
+    0xa0,
+    0x15,
   ];
 
   /// Secure-storage key for wallet [walletId]'s secret (mnemonic / seed).
-  static String walletSecret(String walletId) => _name(_decode(_walletTag), walletId);
+  static String walletSecret(String walletId) =>
+      _name(_decode(_walletTag), walletId);
 
   static String get pinHash => _name(_decode(_pinHashTag));
   static String get pinSalt => _name(_decode(_pinSaltTag));
   static String get gamePinHash => _name(_decode(_gamePinHashTag));
   static String get gamePinSalt => _name(_decode(_gamePinSaltTag));
+  static String get pinKdf => _name(_decode(_pinKdfTag));
 
   static String _decode(List<int> encoded) {
     final out = List<int>.generate(

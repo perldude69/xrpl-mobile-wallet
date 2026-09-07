@@ -16,10 +16,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _pinController = TextEditingController();
   String? _error;
   bool _busy = false;
-  bool _biometricsEnabled = false;
-  bool _biometricsAvailable = false;
+
   /// Whether a game PIN is configured (disables 3-fail decoy).
   bool? _hasGamePin;
+
   /// Wrong PIN attempts this session; 3rd failure opens Zerpland
   /// only when no game PIN is set.
   int _failedAttempts = 0;
@@ -29,7 +29,6 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     super.initState();
     ScreenSecurity.enable();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBiometricsFlag();
       _loadGamePinFlag();
     });
   }
@@ -38,21 +37,6 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final has = await ref.read(lockControllerProvider.notifier).hasGamePin();
     if (!mounted) return;
     setState(() => _hasGamePin = has);
-  }
-
-  Future<void> _loadBiometricsFlag() async {
-    final lock = ref.read(lockControllerProvider.notifier);
-    final enabled = await lock.isBiometricsEnabled();
-    final available = await lock.canCheckBiometrics();
-    if (!mounted) return;
-    setState(() {
-      _biometricsEnabled = enabled;
-      _biometricsAvailable = available;
-    });
-    // Optional auto-prompt when biometrics are on.
-    if (enabled && available) {
-      await _unlockWithBiometrics();
-    }
   }
 
   @override
@@ -86,8 +70,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       _error = null;
       _busy = true;
     });
-    final outcome =
-        await ref.read(lockControllerProvider.notifier).unlockWithPin(pin);
+    final outcome = await ref
+        .read(lockControllerProvider.notifier)
+        .unlockWithPin(pin);
     if (!mounted) return;
 
     switch (outcome) {
@@ -141,26 +126,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     });
   }
 
-  Future<void> _unlockWithBiometrics() async {
-    setState(() {
-      _error = null;
-      _busy = true;
-    });
-    final ok =
-        await ref.read(lockControllerProvider.notifier).unlockWithBiometrics();
-    if (!mounted) return;
-    if (!ok) {
-      setState(() {
-        _error = 'Biometric authentication was cancelled or unavailable.';
-        _busy = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final showBiometrics = _biometricsEnabled && _biometricsAvailable;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Unlock')),
       body: SafeArea(
@@ -198,14 +165,6 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       )
                     : const Text('Unlock'),
               ),
-              if (showBiometrics) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _unlockWithBiometrics,
-                  icon: const Icon(Icons.fingerprint),
-                  label: const Text('Use biometrics'),
-                ),
-              ],
             ],
           ),
         ),

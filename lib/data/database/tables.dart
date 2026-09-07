@@ -135,6 +135,26 @@ class TradeFills extends Table {
   Set<Column> get primaryKey => {executionId, txHash};
 }
 
+/// A payment whose submission outcome is not yet final.
+///
+/// The signed blob is required to identify and recover a transaction after a
+/// transport failure. It contains no private key material.
+class PendingPayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get walletId => text()();
+  TextColumn get network => text()();
+  TextColumn get txHash => text()();
+  TextColumn get signedBlob => text()();
+  IntColumn get lastLedgerSequence => integer().nullable()();
+  TextColumn get status => text()(); // submitted | validated | failed | expired
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class AppSettingsRows extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();

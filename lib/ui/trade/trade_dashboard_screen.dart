@@ -40,6 +40,7 @@ class TradeDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
+  BookSnapshot? _lastOrderBook;
   bool get _canSignTrades => widget.account.canSign;
 
   Future<T> _withLedger<T>(
@@ -66,6 +67,16 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
           blob,
           accountIndex: widget.account.ledgerAccountIndex,
         );
+        if (!verifyLedgerSignature(
+          publicKeyHex: got.publicKeyHex,
+          transactionBlob: blob,
+          derSignature: der,
+        )) {
+          throw LedgerDeviceException(
+            'Ledger returned an invalid signature.',
+            step: 'sign',
+          );
+        }
         return BytesUtils.toHexString(der, lowerCase: false);
       }
 
@@ -405,6 +416,9 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
     final state = ref.watch(tradeControllerProvider(widget.account.id));
     final canSign = _canSignTrades;
     final book = ref.watch(orderBookProvider(_controller.pair));
+    final currentSnapshot = book.value;
+    if (currentSnapshot != null) _lastOrderBook = currentSnapshot;
+    final visibleSnapshot = currentSnapshot ?? _lastOrderBook;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Trade'),
@@ -420,16 +434,14 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            book.when(
-              data: (snapshot) => OrderBookPanel(
-                snapshot: snapshot,
+            if (visibleSnapshot != null)
+              OrderBookPanel(
+                snapshot: visibleSnapshot,
                 onRefresh: () =>
                     ref.invalidate(orderBookProvider(_controller.pair)),
-              ),
-              loading: () => const Card(
-                child: ListTile(title: Text('Loading order book...')),
-              ),
-              error: (_, _) => Card(
+              )
+            else if (book.hasError)
+              Card(
                 child: ListTile(
                   title: const Text('Order book unavailable'),
                   subtitle: const Text(
@@ -443,8 +455,9 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
                     icon: const Icon(Icons.refresh),
                   ),
                 ),
-              ),
-            ),
+              )
+            else
+              const Card(child: ListTile(title: Text('Loading order book...'))),
             const SizedBox(height: 12),
             Card(
               child: ListTile(

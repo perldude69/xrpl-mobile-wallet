@@ -8,6 +8,7 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
 import 'package:xrpl_mobile_wallet/data/watcher/account_watcher.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
+import 'package:uuid/uuid.dart';
 
 /// In-memory view of wallets plus their latest known balances.
 class WalletListState {
@@ -145,12 +146,45 @@ class WalletListController extends StateNotifier<WalletListState> {
     if (secret != null) {
       await _keyVault.saveSecret(account.id, secret);
     }
-    await _db.upsertWallet(_toCompanion(account));
+    try {
+      await _db.upsertWallet(_toCompanion(account));
+    } catch (_) {
+      // Do not leave an orphaned signing secret after a failed metadata write.
+      if (secret != null) {
+        try {
+          await _keyVault.deleteSecret(account.id);
+        } catch (_) {
+          // Keeping an orphaned secret is safer than deleting usable funds.
+        }
+      }
+      rethrow;
+    }
     await reload();
     // Best-effort balance refresh; ignore network errors here.
     try {
       await refreshBalances(walletIds: [account.id]);
     } catch (_) {}
+  }
+
+  Future<void> addLedgerWallet({
+    required String label,
+    required String address,
+    required int accountIndex,
+  }) async {
+    ensureUniqueAddress(state.wallets, address);
+    final account = WalletAccount(
+      id: const Uuid().v4(),
+      label: label.trim().isEmpty ? 'Ledger $accountIndex' : label.trim(),
+      address: address,
+      kind: WalletKind.watchOnly,
+      preferredNetwork: _network.state.network,
+      importMethod: ImportMethod.ledger,
+      createdAt: DateTime.now().toUtc(),
+      useLedger: true,
+      ledgerAccountIndex: accountIndex,
+    );
+    await _db.upsertWallet(_toCompanion(account));
+    await reload();
   }
 
   /// Attach signing material to an existing watch-only wallet (same id/address).
@@ -171,12 +205,21 @@ class WalletListController extends StateNotifier<WalletListState> {
       throw ArgumentError('This secret does not match this wallet\'s address.');
     }
 
-    await _keyVault.saveSecret(walletId, material.secret);
     final upgraded = account.copyWith(
       kind: WalletKind.signing,
       importMethod: material.importMethod,
     );
-    await _db.upsertWallet(_toCompanion(upgraded));
+    await _keyVault.saveSecret(walletId, material.secret);
+    try {
+      await _db.upsertWallet(_toCompanion(upgraded));
+    } catch (_) {
+      try {
+        await _keyVault.deleteSecret(walletId);
+      } catch (_) {
+        // Keeping an orphaned secret is safer than deleting usable funds.
+      }
+      rethrow;
+    }
     await reload();
   }
 

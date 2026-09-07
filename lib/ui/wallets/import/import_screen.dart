@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:xrpl_dart/xrpl_dart.dart';
 import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
 import 'package:xrpl_mobile_wallet/state/network_controller.dart';
@@ -10,8 +11,10 @@ import 'package:xrpl_mobile_wallet/ui/wallets/import/qr_scan_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/mnemonic_grid.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/import/bip39_word_field.dart';
+import 'package:xrpl_mobile_wallet/data/ledger_device/ledger_xrp_device.dart';
+import 'package:xrpl_mobile_wallet/state/providers.dart';
 
-enum _ImportTab { mnemonic, familySeed, watchAddress }
+enum _ImportTab { mnemonic, familySeed, watchAddress, ledger }
 
 class ImportScreen extends ConsumerStatefulWidget {
   const ImportScreen({super.key});
@@ -35,6 +38,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   String? _error;
   bool _busy = false;
   bool _obscureSecret = true;
+  int _ledgerIndex = 0;
+  String? _ledgerAddress;
 
   final _importer = WalletImporter();
 
@@ -73,6 +78,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   }
 
   Future<void> _submit() async {
+    if (_tab == _ImportTab.ledger) {
+      await _saveLedgerWallet();
+      return;
+    }
     final label = _labelController.text;
     final String secret;
     try {
@@ -113,6 +122,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             label: label,
             network: network,
           );
+        case _ImportTab.ledger:
+          throw StateError('Ledger import is handled separately.');
       }
 
       await ref.read(walletListControllerProvider.notifier).addImported(result);
@@ -136,6 +147,61 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     }
   }
 
+  Future<void> _saveLedgerWallet() async {
+    final address = _ledgerAddress;
+    if (address == null) {
+      setState(() => _error = 'Query the Ledger address first.');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
+    try {
+      await ref
+          .read(walletListControllerProvider.notifier)
+          .addLedgerWallet(
+            label: _labelController.text,
+            address: address,
+            accountIndex: _ledgerIndex,
+          );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => _error = userFacingError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _queryLedger() async {
+    setState(() {
+      _error = null;
+      _busy = true;
+      _ledgerAddress = null;
+    });
+    LedgerUsbSession? session;
+    try {
+      session = await LedgerXrpDevice.connectUsb();
+      final result = await LedgerXrpDevice.getAddress(
+        session,
+        accountIndex: _ledgerIndex,
+        display: true,
+      );
+      if (result.address !=
+          XRPPublicKey.fromHex(
+            result.publicKeyHex,
+          ).toClassicAddress().address) {
+        throw StateError('Ledger public key and address do not match.');
+      }
+      if (mounted) setState(() => _ledgerAddress = result.address);
+    } catch (e) {
+      if (mounted) setState(() => _error = LedgerXrpDevice.userFacingError(e));
+    } finally {
+      await session?.close();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   String get _secretHint {
     switch (_tab) {
       case _ImportTab.mnemonic:
@@ -144,6 +210,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         return 'Family seed (starts with s…)';
       case _ImportTab.watchAddress:
         return 'Classic address (r…)';
+      case _ImportTab.ledger:
+        return 'Query the connected Ledger device';
     }
   }
 
@@ -155,6 +223,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         return 'Family seed';
       case _ImportTab.watchAddress:
         return 'Address';
+      case _ImportTab.ledger:
+        return 'Ledger address';
     }
   }
 
@@ -194,6 +264,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 icon: Icon(Icons.password),
               ),
               ButtonSegment(
+                value: _ImportTab.ledger,
+                label: Text('Ledger'),
+                icon: Icon(Icons.usb),
+              ),
+              ButtonSegment(
                 value: _ImportTab.familySeed,
                 label: Text('Seed'),
                 icon: Icon(Icons.key),
@@ -228,7 +303,40 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             enabled: !_busy,
           ),
           const SizedBox(height: 16),
-          if (_tab == _ImportTab.mnemonic)
+          if (_tab == _ImportTab.ledger)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<int>(
+                  initialValue: _ledgerIndex,
+                  decoration: const InputDecoration(
+                    labelText: 'Ledger account index',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: List.generate(
+                    10,
+                    (i) => DropdownMenuItem(value: i, child: Text('$i')),
+                  ),
+                  onChanged: _busy
+                      ? null
+                      : (v) => setState(() {
+                          _ledgerIndex = v ?? 0;
+                          _ledgerAddress = null;
+                        }),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _queryLedger,
+                  icon: const Icon(Icons.usb),
+                  label: const Text('Query Ledger address'),
+                ),
+                if (_ledgerAddress != null) ...[
+                  const SizedBox(height: 12),
+                  SelectableText(_ledgerAddress!),
+                ],
+              ],
+            )
+          else if (_tab == _ImportTab.mnemonic)
             _MnemonicImportGrid(
               controllers: _mnemonicControllers,
               focusNodes: _mnemonicFocus,

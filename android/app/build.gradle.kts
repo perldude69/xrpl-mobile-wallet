@@ -55,14 +55,13 @@ android {
 
     buildTypes {
         release {
-            // Upload keystore via android/key.properties (gitignored).
-            // Falls back to debug so `flutter run --release` still works
-            // on machines without the Play upload key.
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            // Release artifacts must never silently use the debug key.
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "android/key.properties is required for release signing",
+                )
             }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

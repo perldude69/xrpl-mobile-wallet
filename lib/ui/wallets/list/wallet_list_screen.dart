@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/fiat_format.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
-import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/price_feed_controller.dart';
+import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/detail/wallet_detail_screen.dart';
 
@@ -36,6 +36,7 @@ class _WalletListScreenState extends ConsumerState<WalletListScreen> {
   Widget build(BuildContext context) {
     final listState = ref.watch(walletListControllerProvider);
     final price = ref.watch(priceFeedControllerProvider);
+    final pendingPayments = ref.watch(pendingPaymentsProvider);
 
     if (listState.loading && listState.wallets.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -49,10 +50,29 @@ class _WalletListScreenState extends ConsumerState<WalletListScreen> {
               content: Text(listState.errorMessage!),
               actions: [
                 TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () => ref
                       .read(walletListControllerProvider.notifier)
                       .refreshBalances(),
                   child: const Text('Retry'),
+                ),
+              ],
+            ),
+          if (pendingPayments.hasValue && pendingPayments.value!.isNotEmpty)
+            MaterialBanner(
+              leading: const Icon(Icons.hourglass_top),
+              content: Text(
+                '${pendingPayments.value!.length} payment${pendingPayments.value!.length == 1 ? '' : 's'} '
+                'is awaiting validated ledger confirmation. Do not retry.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => ref.invalidate(pendingPaymentsProvider),
+                  child: const Text('Refresh'),
                 ),
               ],
             ),
@@ -325,24 +345,28 @@ class _WalletTile extends StatelessWidget {
       ),
       title: Text(account.label),
       subtitle: Text(_shorten(account.address)),
-      trailing: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(primary, style: Theme.of(context).textTheme.titleSmall),
-          if (secondary != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              secondary,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+      trailing: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(primary, style: Theme.of(context).textTheme.titleSmall),
+            if (secondary != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                secondary,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
+            ],
+            const SizedBox(height: 2),
+            _KindBadge(account: account),
           ],
-          const SizedBox(height: 2),
-          _KindBadge(account: account),
-        ],
+        ),
       ),
       onTap: onTap,
     );

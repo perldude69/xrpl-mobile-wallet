@@ -33,8 +33,10 @@ void watcherOnStart(ServiceInstance service) async {
     ),
   );
 
-  final androidPlugin = notifications.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>();
+  final androidPlugin = notifications
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
   await androidPlugin?.createNotificationChannel(
     const AndroidNotificationChannel(
       AppConfig.watcherStatusChannelId,
@@ -56,18 +58,12 @@ void watcherOnStart(ServiceInstance service) async {
     await service.setAsForegroundService();
   }
 
-  final runner = _WatcherRunner(
-    service: service,
-    notifications: notifications,
-  );
+  final runner = _WatcherRunner(service: service, notifications: notifications);
   await runner.start();
 }
 
 class _WatcherRunner {
-  _WatcherRunner({
-    required this.service,
-    required this.notifications,
-  });
+  _WatcherRunner({required this.service, required this.notifications});
 
   final ServiceInstance service;
   final FlutterLocalNotificationsPlugin notifications;
@@ -83,6 +79,7 @@ class _WatcherRunner {
   bool _stopping = false;
   int _backoffSeconds = 2;
   int _activityNotificationId = 1000;
+  Future<void>? _reloadFuture;
 
   /// Endpoint currently connected (for status); null when disconnected.
   String? _activeWss;
@@ -101,8 +98,20 @@ class _WatcherRunner {
     await _reloadAndResubscribe();
   }
 
-  Future<void> _reloadAndResubscribe() async {
-    _book = await _store.load();
+  Future<void> _reloadAndResubscribe() {
+    return _reloadFuture ??= _reloadAndResubscribeImpl().whenComplete(() {
+      _reloadFuture = null;
+    });
+  }
+
+  Future<void> _reloadAndResubscribeImpl() async {
+    try {
+      _book = await _store.load();
+    } catch (_) {
+      await _statusStore.writePhase(phase: 'error');
+      await _updateStatusNotification('error');
+      return;
+    }
     if (!_book.shouldRun) {
       await _statusStore.writePhase(phase: 'idle');
       await _updateStatusNotification('idle');
@@ -164,11 +173,7 @@ class _WatcherRunner {
 
         final addresses = _subscribeAccounts();
         channel.sink.add(
-          jsonEncode({
-            'id': 1,
-            'command': 'subscribe',
-            'accounts': addresses,
-          }),
+          jsonEncode({'id': 1, 'command': 'subscribe', 'accounts': addresses}),
         );
 
         _backoffSeconds = 2;
@@ -232,8 +237,8 @@ class _WatcherRunner {
 
       final event = TxNotificationParser.parseMessage(message);
       if (event == null) return;
-      // Prefer validated stream events; still accept if flag omitted.
-      if (message['validated'] == false) return;
+      // Only validated ledger transactions are suitable for user activity.
+      if (message['validated'] != true) return;
       // Never notify for oracle account activity.
       if (event.account == AppConfig.xrpUsdOracleAddress ||
           event.destination == AppConfig.xrpUsdOracleAddress) {
@@ -247,8 +252,10 @@ class _WatcherRunner {
 
   Future<void> _handleTxEvent(WatcherTxEvent event) async {
     if (_seenHashes.contains(event.hash)) return;
-    final matched =
-        TxNotificationParser.matchWatchedAccount(event, _book.accounts);
+    final matched = TxNotificationParser.matchWatchedAccount(
+      event,
+      _book.accounts,
+    );
     if (matched == null) return;
 
     _seenHashes.add(event.hash);
@@ -264,8 +271,10 @@ class _WatcherRunner {
       book: _book,
     );
 
-    _activityNotificationId =
-        (_activityNotificationId + 1).clamp(1000, 2000000000);
+    _activityNotificationId = (_activityNotificationId + 1).clamp(
+      1000,
+      2000000000,
+    );
     await notifications.show(
       id: _activityNotificationId,
       title: copy.title,
@@ -274,8 +283,7 @@ class _WatcherRunner {
         android: AndroidNotificationDetails(
           AppConfig.walletActivityChannelId,
           AppConfig.walletActivityChannelName,
-          channelDescription:
-              'Validated ledger activity for watched accounts',
+          channelDescription: 'Validated ledger activity for watched accounts',
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',

@@ -38,12 +38,10 @@ class SecretEnvelopeAuthException implements Exception {
 /// Keystore to unwrap and read every seed without knowing the PIN; now the
 /// stored bytes are useless without it.
 ///
-/// **Deliberately not bound to any Keystore or device key.** An auth-bound
+/// **Deliberately not bound to any authentication state.** An auth-bound
 /// Keystore key is destroyed when the user enrolls a new fingerprint or removes
 /// their screen lock, which would take their funds with it. This envelope
-/// survives all of that; Keystore is a second, independent layer applied where
-/// the envelope is *stored*, and biometrics are only ever a convenience over
-/// the top. See `docs/design/2026-09-06-auth-bound-secret-storage.md`.
+/// survives all of that; the wallet PIN remains the recovery factor.
 ///
 /// **Why a master key and not the PIN directly.** Argon2id costs the better
 /// part of a second on a phone. Running it per secret read would put that on

@@ -27,7 +27,7 @@ void main() {
       );
 
   test('schemaVersion is 4', () {
-    expect(db.schemaVersion, 4);
+    expect(db.schemaVersion, 5);
   });
 
   test('getActiveTradeExecutions returns only non-terminal rows', () async {

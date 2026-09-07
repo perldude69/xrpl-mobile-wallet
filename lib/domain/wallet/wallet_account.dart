@@ -6,7 +6,7 @@ export 'package:xrpl_mobile_wallet/config/network_id.dart';
 
 enum WalletKind { signing, watchOnly }
 
-enum ImportMethod { mnemonic, familySeed, addressOnly }
+enum ImportMethod { mnemonic, familySeed, addressOnly, ledger }
 
 class WalletAccount {
   final String id;
@@ -73,8 +73,9 @@ class WalletAccount {
       importMethod: importMethod ?? this.importMethod,
       createdAt: createdAt ?? this.createdAt,
       sortOrder: sortOrder ?? this.sortOrder,
-      accentColorArgb:
-          clearAccentColor ? null : (accentColorArgb ?? this.accentColorArgb),
+      accentColorArgb: clearAccentColor
+          ? null
+          : (accentColorArgb ?? this.accentColorArgb),
       useLedger: useLedger ?? this.useLedger,
       ledgerAccountIndex: ledgerAccountIndex ?? this.ledgerAccountIndex,
     );

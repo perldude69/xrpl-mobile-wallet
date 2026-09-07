@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
-import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
-/// PIN, game PIN, and biometrics.
+/// PIN and game PIN settings.
 class SecuritySettings extends ConsumerStatefulWidget {
   const SecuritySettings({super.key});
 
@@ -16,15 +15,12 @@ class SecuritySettings extends ConsumerStatefulWidget {
 
 class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
   bool _busy = false;
-  bool _biometricsEnabled = false;
-  bool _biometricsAvailable = false;
   bool _hasGamePin = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBiometrics();
       _loadGamePinFlag();
     });
   }
@@ -33,52 +29,6 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
     final has = await ref.read(lockControllerProvider.notifier).hasGamePin();
     if (!mounted) return;
     setState(() => _hasGamePin = has);
-  }
-
-  Future<void> _loadBiometrics() async {
-    final lock = ref.read(lockControllerProvider.notifier);
-    final enabled = await lock.isBiometricsEnabled();
-    final available = await lock.canCheckBiometrics();
-    if (!mounted) return;
-    setState(() {
-      _biometricsEnabled = enabled;
-      _biometricsAvailable = available;
-    });
-  }
-
-  Future<void> _setBiometrics(bool value) async {
-    if (value) {
-      final lock = ref.read(lockControllerProvider.notifier);
-      final available = await lock.canCheckBiometrics();
-      if (!available) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Biometrics are not available on this device'),
-            ),
-          );
-        }
-        return;
-      }
-      if (!mounted) return;
-      final pinOk = await promptAndVerifyWalletPin(
-        context,
-        ref,
-        title: 'Enable biometrics',
-        message: 'Enter your wallet PIN to allow biometric unlock.',
-        confirmLabel: 'Enable',
-      );
-      if (!pinOk || !mounted) return;
-    }
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(lockControllerProvider.notifier)
-          .setBiometricsEnabled(value);
-      if (mounted) setState(() => _biometricsEnabled = value);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Future<void> _changePin() async {
@@ -264,19 +214,6 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
           ),
           enabled: !_busy,
           onTap: _busy ? null : _manageGamePin,
-        ),
-        SwitchListTile(
-          secondary: const Icon(Icons.fingerprint),
-          title: const Text('Unlock with biometrics'),
-          subtitle: Text(
-            _biometricsAvailable
-                ? (_biometricsEnabled
-                      ? 'Fingerprint / face unlock enabled'
-                      : 'Use device biometrics after PIN is set')
-                : 'Not available on this device',
-          ),
-          value: _biometricsEnabled && _biometricsAvailable,
-          onChanged: (_busy || !_biometricsAvailable) ? null : _setBiometrics,
         ),
       ],
     );

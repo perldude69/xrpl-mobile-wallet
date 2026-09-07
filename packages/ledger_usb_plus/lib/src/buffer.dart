@@ -201,7 +201,7 @@ class ByteDataWriter {
   }
 
   void write(List<int> bytes, {bool copy = false}) {
-    // TODO: may add to current _data buffer
+    // Flush typed writes before appending raw bytes to preserve ordering.
     _flush();
     _bb.add(bytes, copy: copy);
   }

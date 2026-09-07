@@ -16,10 +16,10 @@ class StorageKeys {
   /// Optional second PIN: unlock screen opens Zerpland instead of the wallet.
   static String get gamePinHash => KeyNames.gamePinHash;
   static String get gamePinSalt => KeyNames.gamePinSalt;
+  static String get pinKdf => KeyNames.pinKdf;
 
   static const activeNetwork = 'active_network';
   static const watcherEnabled = 'watcher_enabled';
-  static const biometricsEnabled = 'biometrics_enabled';
 
   /// Comma-separated mainnet HTTP RPC endpoint ids (see [EndpointPreferences]).
   static const mainnetHttpEndpointIds = 'mainnet_http_endpoint_ids';

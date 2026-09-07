@@ -18,6 +18,7 @@ part 'app_database.g.dart';
     AppSettingsRows,
     TradeExecutions,
     TradeFills,
+    PendingPayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -26,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -44,6 +45,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         await m.createTable(tradeExecutions);
         await m.createTable(tradeFills);
+      }
+      if (from < 5) {
+        await m.createTable(pendingPayments);
       }
     },
   );
@@ -86,19 +90,21 @@ class AppDatabase extends _$AppDatabase {
       (delete(wallets)..where((t) => t.id.equals(id))).go();
 
   Future<void> deleteWalletCascade(String id) async {
-    await (delete(balances)..where((t) => t.walletId.equals(id))).go();
-    await (delete(cachedTxs)..where((t) => t.walletId.equals(id))).go();
-    // Trade rows too: a non-terminal execution belonging to a deleted wallet
-    // would otherwise be reconciled forever against an address the app no
-    // longer holds.
-    final executions = await getTradeExecutionsForWallet(id);
-    for (final execution in executions) {
-      await (delete(
-        tradeFills,
-      )..where((t) => t.executionId.equals(execution.id))).go();
-    }
-    await (delete(tradeExecutions)..where((t) => t.walletId.equals(id))).go();
-    await deleteWalletById(id);
+    await transaction(() async {
+      await (delete(balances)..where((t) => t.walletId.equals(id))).go();
+      await (delete(cachedTxs)..where((t) => t.walletId.equals(id))).go();
+      // Trade rows too: a non-terminal execution belonging to a deleted wallet
+      // would otherwise be reconciled forever against an address the app no
+      // longer holds.
+      final executions = await getTradeExecutionsForWallet(id);
+      for (final execution in executions) {
+        await (delete(
+          tradeFills,
+        )..where((t) => t.executionId.equals(execution.id))).go();
+      }
+      await (delete(tradeExecutions)..where((t) => t.walletId.equals(id))).go();
+      await deleteWalletById(id);
+    });
   }
 
   Future<List<Balance>> getBalancesForWallet(String walletId) =>
@@ -223,11 +229,39 @@ class AppDatabase extends _$AppDatabase {
           .get();
 
   Future<void> wipeAll() async {
-    await delete(cachedTxs).go();
-    await delete(balances).go();
-    await delete(wallets).go();
-    await delete(appSettingsRows).go();
+    await transaction(() async {
+      await delete(tradeFills).go();
+      await delete(tradeExecutions).go();
+      await delete(pendingPayments).go();
+      await delete(cachedTxs).go();
+      await delete(balances).go();
+      await delete(wallets).go();
+      await delete(appSettingsRows).go();
+    });
   }
+
+  Future<void> insertPendingPayment(PendingPaymentsCompanion row) =>
+      into(pendingPayments).insertOnConflictUpdate(row);
+
+  Future<void> updatePendingPayment(
+    String id, {
+    required String status,
+    String? lastError,
+  }) => (update(pendingPayments)..where((t) => t.id.equals(id))).write(
+    PendingPaymentsCompanion(
+      status: Value(status),
+      lastError: Value(lastError),
+      updatedAt: Value(DateTime.now().toUtc()),
+    ),
+  );
+
+  Future<List<PendingPayment>> getPendingPayments() =>
+      (select(pendingPayments)
+            ..where(
+              (t) => t.status.isNotIn(const ['validated', 'failed', 'expired']),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+          .get();
 }
 
 LazyDatabase _open() {

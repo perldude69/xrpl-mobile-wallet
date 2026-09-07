@@ -10,18 +10,12 @@ import 'package:xrpl_mobile_wallet/config/storage_keys.dart';
 ///
 /// **Never** includes secrets or key material — address + label only.
 class WatcherAccountEntry {
-  const WatcherAccountEntry({
-    required this.address,
-    required this.label,
-  });
+  const WatcherAccountEntry({required this.address, required this.label});
 
   final String address;
   final String label;
 
-  Map<String, dynamic> toJson() => {
-        'address': address,
-        'label': label,
-      };
+  Map<String, dynamic> toJson() => {'address': address, 'label': label};
 
   factory WatcherAccountEntry.fromJson(Map<String, dynamic> json) {
     return WatcherAccountEntry(
@@ -55,11 +49,11 @@ class WatcherAddressBook {
   bool get shouldRun => enabled && accounts.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
-        'network': network,
-        'wss': wss,
-        'enabled': enabled,
-        'accounts': accounts.map((a) => a.toJson()).toList(),
-      };
+    'network': network,
+    'wss': wss,
+    'enabled': enabled,
+    'accounts': accounts.map((a) => a.toJson()).toList(),
+  };
 
   factory WatcherAddressBook.fromJson(Map<String, dynamic> json) {
     final rawAccounts = json['accounts'];
@@ -139,8 +133,8 @@ class WatcherAddressBookStore {
         return WatcherAddressBook.fromJson(Map<String, dynamic>.from(decoded));
       }
       return WatcherAddressBook.empty;
-    } catch (_) {
-      return WatcherAddressBook.empty;
+    } catch (e) {
+      throw FormatException('Watcher address book is unreadable: $e');
     }
   }
 
@@ -148,10 +142,12 @@ class WatcherAddressBookStore {
     final path = await filePath();
     final file = File(path);
     await file.parent.create(recursive: true);
-    await file.writeAsString(
+    final temp = File('$path.tmp');
+    await temp.writeAsString(
       const JsonEncoder.withIndent('  ').convert(book.toJson()),
       flush: true,
     );
+    await temp.rename(path);
   }
 
   /// Remove the public address book file (used by full wipe).

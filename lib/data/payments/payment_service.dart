@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:blockchain_utils/blockchain_utils.dart';
+import 'package:drift/drift.dart';
 import 'package:xrpl_dart/xrpl_dart.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/network_id.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/rlusd.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/secret_validator.dart';
+import 'package:xrpl_mobile_wallet/data/database/app_database.dart';
 
 /// Destination account flags that affect whether a payment is safe to send.
 class DestinationAccountPolicy {
@@ -81,6 +84,10 @@ class PaymentOperationException implements Exception {
   const PaymentOperationException(this.stage);
 
   final String stage;
+
+  /// The transaction was signed, but the submit outcome is unknown.
+  bool get submissionUncertain =>
+      stage == 'submit timeout' || stage == 'submit transport';
 }
 
 /// Pure validation helpers for send-form inputs (unit-testable).
@@ -226,6 +233,10 @@ class PaymentValidators {
 /// Secrets are accepted as method arguments (from KeyVault at the call site),
 /// kept in local variables only, and never logged.
 class PaymentService {
+  PaymentService({this.database});
+
+  final AppDatabase? database;
+
   /// Signs and submits a non-Payment transaction using the same guarded path
   /// as payments. The transaction builder must contain only public inputs.
   ///
@@ -329,6 +340,7 @@ class PaymentService {
 
   Future<PaymentSubmitResult> sendXrp({
     required String walletId,
+    required String network,
     required String secret,
     required String fromAddress,
     required String destination,
@@ -346,6 +358,8 @@ class PaymentService {
     final amount = XRPAmount(drops);
 
     return _signAndSubmit(
+      walletId: walletId,
+      network: network,
       secret: secret,
       fromAddress: fromAddress,
       rpc: rpc,
@@ -362,6 +376,7 @@ class PaymentService {
 
   Future<PaymentSubmitResult> sendIou({
     required String walletId,
+    required String network,
     required String secret,
     required String fromAddress,
     required String destination,
@@ -390,6 +405,8 @@ class PaymentService {
     );
 
     return _signAndSubmit(
+      walletId: walletId,
+      network: network,
       secret: secret,
       fromAddress: fromAddress,
       rpc: rpc,
@@ -461,6 +478,8 @@ class PaymentService {
   }
 
   Future<PaymentSubmitResult> sendXrpWithLedger({
+    String? walletId,
+    String network = 'unknown',
     required String fromAddress,
     required String destination,
     int? destinationTag,
@@ -474,6 +493,8 @@ class PaymentService {
     if (amountError != null) throw ArgumentError(amountError);
     final drops = XRPHelper.xrpToDrop(amountXrp.trim());
     return signAndSubmitWithLedgerKeys(
+      walletId: walletId,
+      network: network,
       fromAddress: fromAddress,
       rpc: rpc,
       publicKeyHex: publicKeyHex,
@@ -490,6 +511,8 @@ class PaymentService {
   }
 
   Future<PaymentSubmitResult> sendIouWithLedger({
+    String? walletId,
+    String network = 'unknown',
     required String fromAddress,
     required String destination,
     int? destinationTag,
@@ -504,6 +527,8 @@ class PaymentService {
     final amountError = PaymentValidators.validateIouAmount(value);
     if (amountError != null) throw ArgumentError(amountError);
     return signAndSubmitWithLedgerKeys(
+      walletId: walletId,
+      network: network,
       fromAddress: fromAddress,
       rpc: rpc,
       publicKeyHex: publicKeyHex,
@@ -535,6 +560,8 @@ class PaymentService {
   /// Do **not** send [BaseTransaction.toSigningBlobBytes] (STX\\0 prefix) to the
   /// device — that is for software hash-and-sign only and causes SW 0x680b.
   Future<PaymentSubmitResult> signAndSubmitWithLedgerKeys({
+    String? walletId,
+    String network = 'unknown',
     required String fromAddress,
     required XRPProvider rpc,
     required String publicKeyHex,
@@ -570,19 +597,54 @@ class PaymentService {
     transaction.setSignature(XRPLSignature.sign(publicKeyHex, sigHex));
 
     final trBlob = transaction.toTransactionBlob();
-    final result = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
+    final txHash = transaction.getHash();
+    final pendingId = walletId == null ? null : '$walletId:$txHash';
+    if (pendingId != null && database != null) {
+      await database!.insertPendingPayment(
+        PendingPaymentsCompanion.insert(
+          id: pendingId,
+          walletId: walletId!,
+          network: network,
+          txHash: txHash,
+          signedBlob: base64Encode(utf8.encode(trBlob)),
+          lastLedgerSequence: Value(transaction.lastLedgerSequence),
+          status: 'submitted',
+          createdAt: DateTime.now().toUtc(),
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
+    }
+    final PaymentSubmitResult result;
+    try {
+      final response = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
+      result = PaymentSubmitResult(
+        hash: response.txJson.hash ?? txHash,
+        engineResult: response.engineResult,
+        engineResultMessage: response.engineResultMessage,
+        isSuccess: response.isSuccess,
+        feeDrops: feeDrops,
+        lastLedgerSequence: transaction.lastLedgerSequence,
+      );
+    } on TimeoutException {
+      throw const PaymentOperationException('submit timeout');
+    } catch (_) {
+      throw const PaymentOperationException('submit transport');
+    }
 
-    return PaymentSubmitResult(
-      hash: result.txJson.hash ?? transaction.getHash(),
-      engineResult: result.engineResult,
-      engineResultMessage: result.engineResultMessage,
-      isSuccess: result.isSuccess,
-      feeDrops: feeDrops,
-      lastLedgerSequence: transaction.lastLedgerSequence,
-    );
+    if (pendingId != null && database != null) {
+      await database!.updatePendingPayment(
+        pendingId,
+        status: result.isSuccess ? 'submitted' : 'failed',
+        lastError: result.isSuccess ? null : result.engineResult,
+      );
+    }
+
+    return result;
   }
 
   Future<PaymentSubmitResult> _signAndSubmit({
+    String? walletId,
+    String network = 'unknown',
     required String secret,
     required String fromAddress,
     required XRPProvider rpc,
@@ -624,17 +686,42 @@ class PaymentService {
     }
 
     final PaymentSubmitResult result;
+    String? pendingId;
     try {
       final trBlob = transaction.toTransactionBlob();
+      final txHash = transaction.getHash();
+      pendingId = walletId == null ? null : '$walletId:$txHash';
+      if (pendingId != null && database != null) {
+        await database!.insertPendingPayment(
+          PendingPaymentsCompanion.insert(
+            id: pendingId,
+            walletId: walletId!,
+            network: network,
+            txHash: txHash,
+            signedBlob: base64Encode(utf8.encode(trBlob)),
+            lastLedgerSequence: Value(transaction.lastLedgerSequence),
+            status: 'submitted',
+            createdAt: DateTime.now().toUtc(),
+            updatedAt: DateTime.now().toUtc(),
+          ),
+        );
+      }
       final response = await rpc.request(XRPRequestSubmit(txBlob: trBlob));
       result = PaymentSubmitResult(
-        hash: response.txJson.hash ?? transaction.getHash(),
+        hash: response.txJson.hash ?? txHash,
         engineResult: response.engineResult,
         engineResultMessage: response.engineResultMessage,
         isSuccess: response.isSuccess,
         feeDrops: feeDrops,
         lastLedgerSequence: transaction.lastLedgerSequence,
       );
+      if (pendingId != null && database != null) {
+        await database!.updatePendingPayment(
+          pendingId,
+          status: result.isSuccess ? 'submitted' : 'failed',
+          lastError: result.isSuccess ? null : result.engineResult,
+        );
+      }
     } on BaseXRPLPluginException {
       rethrow;
     } on RPCError {

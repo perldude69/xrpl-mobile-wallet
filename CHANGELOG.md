@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-09-07
+
+### Added
+
+- Ledger-backed wallet import with device address verification.
+- Validated-ledger order-book refresh and pending-payment recovery status.
+
+### Security
+
+- PIN-derived wallet secret envelopes and strict Ledger signature verification.
+- Removed biometric unlock until a safe PIN-derived convenience flow is available.
+
+### Fixed
+
+- Wallet-list layout overflow and stale order-book loading display.
+
 ## [2.1.0] - 2026-09-07
 
 ### Added

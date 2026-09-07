@@ -79,11 +79,44 @@ void main() {
     });
   });
 
+  group('Ledger signature encoding', () {
+    test('accepts canonical DER ECDSA signature', () {
+      expect(
+        isCanonicalLedgerSignature([
+          0x30,
+          0x06,
+          0x02,
+          0x01,
+          0x01,
+          0x02,
+          0x01,
+          0x01,
+        ]),
+        isTrue,
+      );
+    });
+
+    test('rejects malformed and non-canonical signatures', () {
+      expect(isCanonicalLedgerSignature([0x30, 0x01, 0x02]), isFalse);
+      expect(
+        isCanonicalLedgerSignature([
+          0x30,
+          0x08,
+          0x02,
+          0x02,
+          0x00,
+          0x01,
+          0x02,
+          0x01,
+          0x01,
+        ]),
+        isFalse,
+      );
+    });
+  });
+
   group('WalletAccount.canSign with Ledger checkbox', () {
-    WalletAccount base({
-      required WalletKind kind,
-      bool useLedger = false,
-    }) {
+    WalletAccount base({required WalletKind kind, bool useLedger = false}) {
       return WalletAccount(
         id: 'w1',
         label: 'Test',
@@ -103,18 +136,12 @@ void main() {
     });
 
     test('watch-only with Ledger checkbox can send', () {
-      expect(
-        base(kind: WalletKind.watchOnly, useLedger: true).canSign,
-        isTrue,
-      );
+      expect(base(kind: WalletKind.watchOnly, useLedger: true).canSign, isTrue);
     });
 
     test('signing wallet can always send', () {
       expect(base(kind: WalletKind.signing).canSign, isTrue);
-      expect(
-        base(kind: WalletKind.signing, useLedger: true).canSign,
-        isTrue,
-      );
+      expect(base(kind: WalletKind.signing, useLedger: true).canSign, isTrue);
     });
   });
 
