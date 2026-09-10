@@ -150,7 +150,7 @@ void main() {
     test('inners have tfInnerBatchTxn, fee 0, empty signing key', () {
       final batch = BatchService.buildXrpAllOrNothing(
         fromAddress: _from,
-        publicKeyHex: '02' + ('11' * 32),
+        publicKeyHex: '02${'11' * 32}',
         legs: [_leg(_a, '1'), _leg(_b, '2')],
       );
 
@@ -182,7 +182,7 @@ void main() {
       expect(
         () => BatchService.buildXrpAllOrNothing(
           fromAddress: _from,
-          publicKeyHex: '02' + ('11' * 32),
+          publicKeyHex: '02${'11' * 32}',
           legs: [_leg(_a, '1')],
         ),
         throwsArgumentError,
