@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-10
+
+### Added
+
+- Timed XRP escrow (create, finish, cancel) and settings list.
+- BatchV1_1 multi-destination XRP send (all-or-nothing), gated on the connected node.
+- Import network picker (mainnet/testnet), defaulting to the active network.
+- Colorized XRP/RLUSD order-book tape with AMM spot and fee from `amm_info`.
+- Slide-to-sign for payments, trades, escrow, and RLUSD trust lines while unlocked.
+- Pirate-themed wallet detail layout (action grid, aligned balances).
+- Local Widgetbook sandbox (`widgetbook/`) for layout experiments; not in the Play APK.
+
+### Changed
+
+- BIP39 restore jumps to the next word field after an autocomplete pick.
+- Wallet PIN is no longer required on every transaction; wipe and delete still require it.
+
 ## [2.1.1] - 2026-09-07
 
 ### Added

@@ -12,6 +12,7 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_importer.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 
 /// Encrypted public wallet-list export and import.
 class BackupSettings extends ConsumerStatefulWidget {
@@ -200,7 +201,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
       children: [
         const Divider(indent: 16, endIndent: 16),
         ListTile(
-          leading: const Icon(Icons.lock_outline),
+          leading: const PirateIcon(glyph: PirateGlyph.scroll),
           title: const Text('Export list'),
           subtitle: Text(
             wallets.isEmpty
@@ -213,7 +214,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
           onTap: (_busy || wallets.isEmpty) ? null : _exportWallets,
         ),
         ListTile(
-          leading: const Icon(Icons.file_open_outlined),
+          leading: const PirateIcon(glyph: PirateGlyph.map),
           title: const Text('Import list'),
           subtitle: const Text(
             'Load an encrypted export · adds as watch-only\n'

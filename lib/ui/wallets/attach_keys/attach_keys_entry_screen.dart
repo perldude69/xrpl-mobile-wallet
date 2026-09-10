@@ -292,12 +292,9 @@ class _AttachKeysEntryScreenState extends ConsumerState<AttachKeysEntryScreen> {
                     controller: _gridControllers[row * 3 + col],
                     focusNode: _gridFocus[row * 3 + col],
                     enabled: !_busy,
-                    onSubmitted: (_) {
-                      final next = row * 3 + col + 1;
-                      if (next < _gridFocus.length) {
-                        _gridFocus[next].requestFocus();
-                      }
-                    },
+                    nextFocusNode: row * 3 + col + 1 < _gridFocus.length
+                        ? _gridFocus[row * 3 + col + 1]
+                        : null,
                     onPasteMultiWord: (words) {
                       _fillGridFromWords(words, startIndex: 0);
                     },

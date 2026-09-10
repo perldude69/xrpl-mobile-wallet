@@ -108,11 +108,14 @@ bool verifyLedgerSignature({
 }) {
   if (!isCanonicalLedgerSignature(derSignature)) return false;
   try {
+    // Ledger receives the raw STObject, but XRPL transaction signatures are
+    // verified over the STX\0-prefixed signing payload.
+    final signingPayload = <int>[0x53, 0x54, 0x58, 0x00, ...transactionBlob];
     final verifier = XrpVerifier.fromKeyBytes(
       BytesUtils.fromHexString(publicKeyHex),
       EllipticCurveTypes.secp256k1,
     );
-    return verifier.verify(transactionBlob, derSignature);
+    return verifier.verify(signingPayload, derSignature);
   } catch (_) {
     return false;
   }

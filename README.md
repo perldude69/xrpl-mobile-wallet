@@ -19,6 +19,8 @@ A step-by-step HTML guide for new users (with screenshot slots) lives at
 - XRP + IOU balances and history, with a portfolio XRP total
 - Trust-line token names from a bundled [XRPSCAN tokens](https://xrpscan.com/tokens) snapshot
 - Send XRP and held IOUs with a review step (software keys or USB Ledger)
+- Trade XRP ⇄ RLUSD (market and limit orders, software keys or USB Ledger)
+- Timed XRP escrow (create, finish, cancel)
 - PIN lock, optional biometrics, optional game PIN
 - Background account watcher with local notifications
 - Encrypted JSON export/import of the public wallet list (names + addresses)
@@ -109,9 +111,9 @@ migrate automatically.
 
 ## Design docs
 
-- [Consolidated plan](docs/design/2026-09-06-consolidated-plan.md) — Part I is a
-  spec of shipped behaviour (core design, attach keys, game PIN, trading slice);
-  Part II is the queued work (smart trade execution).
+- [Consolidated plan](docs/design/2026-09-06-consolidated-plan.md) — Part I is
+  shipped behaviour; Part II is the remaining queue (further batch recipes, deferred escrow,
+  trade polish).
 
 ## License
 

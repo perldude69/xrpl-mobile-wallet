@@ -9,7 +9,8 @@ import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
-import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/swipe_to_sign.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 /// Adds the official RLUSD trust line for a signing or Ledger wallet.
@@ -57,12 +58,10 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
       ),
     );
     if (ok != true || !mounted) return;
-    final pinOk = await promptAndVerifyWalletPin(
+    final pinOk = await promptSwipeToSign(
       context,
-      ref,
       title: 'Confirm trust line',
-      message: 'Enter your wallet PIN to sign the RLUSD TrustSet.',
-      confirmLabel: 'Sign',
+      message: 'Slide to sign the RLUSD TrustSet.',
     );
     if (!pinOk || !mounted) return;
     await _submit();
@@ -207,7 +206,7 @@ class _AddRlusdButtonState extends ConsumerState<AddRlusdButton> {
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.add_card_outlined),
+          : const PirateIcon(glyph: PirateGlyph.doubloon),
       label: const Text('Add RLUSD'),
     );
   }

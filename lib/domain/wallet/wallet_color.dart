@@ -4,20 +4,20 @@ import 'package:flutter/material.dart';
 class WalletColor {
   WalletColor._();
 
-  /// Preset palette for manual selection (Material-ish, works on dark UI).
+  /// Preset palette for manual selection (metals, gems, sea — works on dark UI).
   static const presets = <Color>[
-    Color(0xFF00A3BF), // teal
-    Color(0xFF26A69A),
-    Color(0xFF5C6BC0),
-    Color(0xFF7E57C2),
-    Color(0xFFEC407A),
-    Color(0xFFEF5350),
-    Color(0xFFFFA726),
-    Color(0xFFFFEE58),
-    Color(0xFF66BB6A),
-    Color(0xFF8D6E63),
-    Color(0xFF78909C),
-    Color(0xFFE0E0E0),
+    Color(0xFFC9A227), // brass
+    Color(0xFF1AA6B8), // lagoon
+    Color(0xFFC14B3A), // rum
+    Color(0xFF2E7D4F), // bottle
+    Color(0xFF5C6BC0), // deep water
+    Color(0xFF7E57C2), // amethyst
+    Color(0xFFEC407A), // ruby
+    Color(0xFFFFA726), // doubloon
+    Color(0xFF66BB6A), // foam
+    Color(0xFF8D6E63), // oak
+    Color(0xFF78909C), // pewter
+    Color(0xFFE6D5B0), // sail canvas
   ];
 
   /// Resolve display color: explicit ARGB override, else hash of [address].

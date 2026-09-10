@@ -14,7 +14,17 @@ import 'package:xrpl_mobile_wallet/ui/send/send_screen.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_color.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/attach_keys/attach_keys_chooser_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/treasure_icon.dart';
+import 'package:xrpl_mobile_wallet/domain/amount/fiat_format.dart';
+import 'package:xrpl_mobile_wallet/state/price_feed_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/detail/add_rlusd_button.dart';
+import 'package:xrpl_mobile_wallet/ui/wallets/detail/wallet_action_tile.dart';
+import 'package:xrpl_mobile_wallet/data/payments/escrow_service.dart';
+import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/escrow_settings.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/settings_category_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/wallets/detail/create_escrow_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/receive/receive_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/trade/trade_dashboard_screen.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/testnet_faucet_service.dart';
@@ -51,29 +61,50 @@ class WalletDetailScreen extends ConsumerWidget {
       network: network,
       lines: balances.map((b) => (currency: b.currency, issuer: b.issuer)),
     );
+    final price = ref.watch(priceFeedControllerProvider);
+    final xrp = listState.xrpBalance(walletId);
+    final usd = FiatFormat.xrpToUsd(xrp, price.usdPerXrp);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(a.label),
+        title: Text(a.label, overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            tooltip: 'Copy address',
+            onPressed: () => _copyAddress(context, a.address),
+            icon: const Icon(Icons.copy),
+          ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: listState.refreshing
                 ? null
-                : () => ref
-                      .read(walletListControllerProvider.notifier)
-                      .refreshBalances(walletIds: [walletId]),
+                : () async {
+                    await ref
+                        .read(walletListControllerProvider.notifier)
+                        .refreshBalances(walletIds: [walletId]);
+                    await ref
+                        .read(activityControllerProvider.notifier)
+                        .refreshFromNetwork();
+                  },
             icon: listState.refreshing
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.refresh),
+                : const PirateIcon(glyph: PirateGlyph.helm),
           ),
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'delete') {
+              if (value == 'rename') {
+                await _editLabel(context, ref, a);
+              } else if (value == 'color') {
+                await _editColor(context, ref, a);
+              } else if (value == 'ledger') {
+                await _setUseLedger(context, ref, a, !a.useLedger);
+              } else if (value == 'ledger_index') {
+                await _editLedgerIndex(context, ref, a);
+              } else if (value == 'delete') {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -123,6 +154,19 @@ class WalletDetailScreen extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(value: 'rename', child: Text('Display name')),
+              const PopupMenuItem(value: 'color', child: Text('Color')),
+              PopupMenuItem(
+                value: 'ledger',
+                child: Text(
+                  a.useLedger ? 'Disable Ledger Device' : 'Ledger Device',
+                ),
+              ),
+              if (a.useLedger)
+                const PopupMenuItem(
+                  value: 'ledger_index',
+                  child: Text('Ledger account index'),
+                ),
               const PopupMenuItem(value: 'copy', child: Text('Copy address')),
               if (!a.canSign)
                 const PopupMenuItem(value: 'add_keys', child: Text('Add keys')),
@@ -145,113 +189,85 @@ class WalletDetailScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        backgroundColor: a.displayColor,
-                        child: Text(
-                          a.label.isNotEmpty ? a.label[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                      TreasureAvatar(account: a, radius: 28),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              a.label,
-                              style: Theme.of(context).textTheme.titleMedium,
+                              xrp ?? '—',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Chip(
-                                  label: Text(
-                                    a.useLedger
-                                        ? 'Ledger'
-                                        : a.hasLocalKeys
-                                        ? 'Signing'
-                                        : 'Watch-only',
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  avatar: Icon(
-                                    a.useLedger
-                                        ? Icons.usb
-                                        : a.hasLocalKeys
-                                        ? Icons.key
-                                        : Icons.visibility,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: Text(a.preferredNetwork.label),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ],
+                            Text(
+                              price.displayFiat && usd != null
+                                  ? 'XRP · ${FiatFormat.formatUsd(usd)}'
+                                  : 'XRP',
+                              style: Theme.of(context).textTheme.labelLarge,
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  SelectableText(
-                    a.address,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Chip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: PirateIcon(
+                          glyph: a.useLedger
+                              ? PirateGlyph.compass
+                              : a.hasLocalKeys
+                              ? PirateGlyph.key
+                              : PirateGlyph.spyglass,
+                          size: 16,
+                        ),
+                        label: Text(
+                          a.useLedger
+                              ? 'Ledger'
+                              : a.hasLocalKeys
+                              ? 'Signing'
+                              : 'Watch-only',
+                        ),
+                      ),
+                      Chip(
+                        visualDensity: VisualDensity.compact,
+                        label: Text(a.preferredNetwork.label),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => _copyAddress(context, a.address),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            a.address,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontFamily: 'monospace'),
+                          ),
+                        ),
+                        const Icon(Icons.copy, size: 18),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Display name'),
-            subtitle: Text(a.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _editLabel(context, ref, a),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(radius: 14, backgroundColor: a.displayColor),
-            title: const Text('Color'),
-            subtitle: Text(
-              a.accentColorArgb == null ? 'Auto (from address)' : 'Custom',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _editColor(context, ref, a),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.usb),
-            title: const Text('Ledger Device'),
-            subtitle: Text(
-              a.useLedger
-                  ? 'Send via USB Ledger · path m/44\'/144\'/${a.ledgerAccountIndex}\'/0/0'
-                  : 'Enable Send with a connected Ledger (no seed on this phone)',
-            ),
-            value: a.useLedger,
-            onChanged: (v) => _setUseLedger(context, ref, a, v),
-          ),
-          if (a.useLedger)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.pin_outlined),
-              title: const Text('Ledger account index'),
-              subtitle: Text('${a.ledgerAccountIndex}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _editLedgerIndex(context, ref, a),
-            ),
-          // Actions immediately under the header so watch-only "Add keys" is
-          // not buried under a long balances list.
-          const SizedBox(height: 16),
           if (!a.canSign) ...[
+            const SizedBox(height: 16),
             Card(
               color: Theme.of(context).colorScheme.secondaryContainer,
               child: Padding(
@@ -265,7 +281,7 @@ class WalletDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Enable “Ledger Device” above to send with a hardware '
+                      'Use Ledger Device in the menu to send with a hardware '
                       'wallet, or add a recovery phrase / family seed that '
                       'matches this address.',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -273,19 +289,19 @@ class WalletDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: () => _openAttachKeys(context, a),
-                      icon: const Icon(Icons.key),
+                      icon: const PirateIcon(glyph: PirateGlyph.key),
                       label: const Text('Add keys'),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
           ],
           if (a.useLedger) ...[
+            const SizedBox(height: 12),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.usb),
+                leading: const PirateIcon(glyph: PirateGlyph.compass),
                 title: const Text('Ledger signing'),
                 subtitle: Text(
                   'Confirm each payment on the device. Path '
@@ -293,46 +309,75 @@ class WalletDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
           ],
-          Row(
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 2.2,
             children: [
-              if (a.canSign)
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      final sent = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => SendScreen(account: a),
-                        ),
-                      );
-                      if (sent == true && context.mounted) {
-                        await ref
-                            .read(walletListControllerProvider.notifier)
-                            .refreshBalances(walletIds: [walletId]);
-                        await ref
-                            .read(activityControllerProvider.notifier)
-                            .refreshFromNetwork();
-                      }
-                    },
-                    icon: const Icon(Icons.send),
-                    label: Text(a.useLedger ? 'Send (Ledger)' : 'Send'),
+              WalletActionTile(
+                glyph: PirateGlyph.bottle,
+                label: 'Send',
+                enabled: a.canSign,
+                tooltip: a.useLedger ? 'Confirm on Ledger' : null,
+                onPressed: () async {
+                  final sent = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(builder: (_) => SendScreen(account: a)),
+                  );
+                  if (sent == true && context.mounted) {
+                    await ref
+                        .read(walletListControllerProvider.notifier)
+                        .refreshBalances(walletIds: [walletId]);
+                    await ref
+                        .read(activityControllerProvider.notifier)
+                        .refreshFromNetwork();
+                  }
+                },
+              ),
+              WalletActionTile(
+                glyph: PirateGlyph.chest,
+                label: 'Receive',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ReceiveScreen(address: a.address, label: a.label),
+                    ),
+                  );
+                },
+              ),
+              WalletActionTile(
+                glyph: PirateGlyph.crossedSwords,
+                label: 'Trade',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => TradeDashboardScreen(account: a),
                   ),
                 ),
-              if (a.canSign) const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            ReceiveScreen(address: a.address, label: a.label),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code),
-                  label: const Text('Receive'),
-                ),
+              ),
+              WalletActionTile(
+                glyph: PirateGlyph.shovel,
+                label: 'Escrow',
+                enabled: a.canSign,
+                onPressed: () async {
+                  final created = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => CreateEscrowScreen(account: a),
+                    ),
+                  );
+                  if (created == true && context.mounted) {
+                    await ref
+                        .read(walletListControllerProvider.notifier)
+                        .refreshBalances(walletIds: [walletId]);
+                    await ref
+                        .read(activityControllerProvider.notifier)
+                        .refreshFromNetwork();
+                  }
+                },
               ),
             ],
           ),
@@ -343,115 +388,109 @@ class WalletDetailScreen extends ConsumerWidget {
               child: AddRlusdButton(account: a),
             ),
           ],
+          const SizedBox(height: 12),
+          _WalletEscrowSummary(key: ValueKey(xrp ?? 'none'), account: a),
           if (network == NetworkId.testnet) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                try {
-                  await const TestnetFaucetService().fund(a.address);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Testnet funding requested')),
-                  );
-                  await ref
-                      .read(walletListControllerProvider.notifier)
-                      .refreshBalances(walletIds: [walletId]);
-                } catch (_) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Testnet faucet request failed'),
+            Card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: Text(
+                      'Testnet',
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.water_drop_outlined),
-              label: const Text('Fund from testnet faucet'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final opened = await launchUrl(
-                  TestnetFaucetService.rlusdFaucetUri,
-                  mode: LaunchMode.externalApplication,
-                );
-                if (!opened && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Could not open RLUSD faucet'),
+                  ),
+                  ListTile(
+                    leading: const PirateIcon(glyph: PirateGlyph.barrel),
+                    title: const Text('Fund XRP'),
+                    onTap: () async {
+                      try {
+                        await const TestnetFaucetService().fund(a.address);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Testnet funding requested'),
+                          ),
+                        );
+                        await ref
+                            .read(walletListControllerProvider.notifier)
+                            .refreshBalances(walletIds: [walletId]);
+                      } catch (_) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Testnet faucet request failed'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: const PirateIcon(glyph: PirateGlyph.doubloon),
+                    title: const Text('Official RLUSD faucet'),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () async {
+                      final opened = await launchUrl(
+                        TestnetFaucetService.rlusdFaucetUri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                      if (!opened && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not open RLUSD faucet'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: const PirateIcon(glyph: PirateGlyph.spyglass),
+                    title: const Text('Bithomp RLUSD faucet'),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () => launchUrl(
+                      TestnetFaucetService.rlusdBithompFaucetUri,
+                      mode: LaunchMode.externalApplication,
                     ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Get RLUSD from official faucet'),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: () => launchUrl(
-                TestnetFaucetService.rlusdBithompFaucetUri,
-                mode: LaunchMode.externalApplication,
+                  ),
+                ],
               ),
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Alternative RLUSD faucet (Bithomp)'),
             ),
           ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => TradeDashboardScreen(account: a),
-                ),
-              ),
-              icon: const Icon(Icons.swap_horiz),
-              label: const Text('Trade'),
-            ),
-          ),
           const SizedBox(height: 24),
           Text('Balances', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (balances.isEmpty)
-            const Card(
-              child: ListTile(
-                title: Text('No balance data'),
-                subtitle: Text('Pull refresh or wait for network'),
-              ),
-            )
-          else
-            ...balances.map((b) {
-              final title = CurrencyDisplay.title(b.currency, issuer: b.issuer);
-              final symbol = CurrencyDisplay.symbol(
-                b.currency,
-                issuer: b.issuer,
-              );
-              return Card(
-                child: ListTile(
-                  title: Text(title),
-                  subtitle: b.issuer == null
-                      ? (b.currency == symbol
-                            ? null
-                            : Text(
-                                b.currency,
-                                style: const TextStyle(fontSize: 11),
-                              ))
-                      : Text(
-                          b.issuer!,
-                          style: const TextStyle(fontFamily: 'monospace'),
-                        ),
-                  trailing: Text(
-                    '${b.value} $symbol',
-                    style: Theme.of(context).textTheme.titleMedium,
+          Card(
+            child: balances.isEmpty
+                ? const ListTile(
+                    title: Text('No balance data'),
+                    subtitle: Text('Pull refresh or wait for network'),
+                  )
+                : Column(
+                    children: [
+                      for (var i = 0; i < balances.length; i++) ...[
+                        if (i > 0) const Divider(height: 1),
+                        _BalanceRow(balance: balances[i]),
+                      ],
+                    ],
                   ),
-                ),
-              );
-            }),
+          ),
           const SizedBox(height: 24),
           _RecentActivitySection(walletId: walletId),
         ],
       ),
     );
+  }
+
+  static Future<void> _copyAddress(BuildContext context, String address) async {
+    await Clipboard.setData(ClipboardData(text: address));
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Address copied')));
+    }
   }
 
   Future<void> _openAttachKeys(BuildContext context, WalletAccount a) async {
@@ -678,6 +717,43 @@ class WalletDetailScreen extends ConsumerWidget {
   }
 }
 
+class _BalanceRow extends StatelessWidget {
+  const _BalanceRow({required this.balance});
+
+  final LedgerBalance balance;
+
+  @override
+  Widget build(BuildContext context) {
+    final symbol = CurrencyDisplay.symbol(
+      balance.currency,
+      issuer: balance.issuer,
+    );
+    final issuer = balance.issuer;
+    return ListTile(
+      leading: PirateIcon(
+        glyph: balance.currency == 'XRP'
+            ? PirateGlyph.chest
+            : PirateGlyph.doubloon,
+      ),
+      title: Text(symbol),
+      subtitle: issuer == null
+          ? null
+          : Text(
+              issuer,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+      trailing: Text(
+        balance.value,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+}
+
 class _RecentActivitySection extends ConsumerWidget {
   const _RecentActivitySection({required this.walletId});
 
@@ -685,7 +761,7 @@ class _RecentActivitySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activity = ref.watch(activityControllerProvider);
+    ref.watch(activityControllerProvider);
     final recent = ref
         .read(activityControllerProvider.notifier)
         .itemsForWallet(walletId, limit: 5);
@@ -701,14 +777,6 @@ class _RecentActivitySection extends ConsumerWidget {
                 'Recent activity',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-            ),
-            TextButton(
-              onPressed: activity.refreshing
-                  ? null
-                  : () => ref
-                        .read(activityControllerProvider.notifier)
-                        .refreshFromNetwork(),
-              child: const Text('Refresh'),
             ),
           ],
         ),
@@ -746,6 +814,70 @@ class _RecentActivitySection extends ConsumerWidget {
             );
           }),
       ],
+    );
+  }
+}
+
+class _WalletEscrowSummary extends ConsumerStatefulWidget {
+  const _WalletEscrowSummary({super.key, required this.account});
+  final WalletAccount account;
+
+  @override
+  ConsumerState<_WalletEscrowSummary> createState() =>
+      _WalletEscrowSummaryState();
+}
+
+class _WalletEscrowSummaryState extends ConsumerState<_WalletEscrowSummary> {
+  late Future<List<XrpEscrow>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = EscrowService(
+      ref.read(xrplRpcClientProvider),
+    ).listVisible([widget.account.address]).then((c) => c.escrows);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<XrpEscrow>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final escrows = snapshot.data;
+        if (escrows == null || escrows.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        var drops = BigInt.zero;
+        var owned = 0;
+        for (final e in escrows) {
+          if (e.isXrpAmount) {
+            drops += BigInt.tryParse(e.amountDrops) ?? BigInt.zero;
+          }
+          if (e.owner == widget.account.address) owned++;
+        }
+        return Card(
+          child: ListTile(
+            leading: const PirateIcon(glyph: PirateGlyph.shovel),
+            title: Text(
+              '${XrpAmount.dropsToXrp(drops.toString())} XRP locked in escrow',
+            ),
+            subtitle: Text(
+              owned == escrows.length
+                  ? '${escrows.length} open escrow${escrows.length == 1 ? '' : 's'} · extra owner reserve until closed'
+                  : '${escrows.length} open escrow${escrows.length == 1 ? '' : 's'} · $owned outgoing',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SettingsCategoryScreen(
+                  title: 'Escrow',
+                  child: EscrowSettings(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

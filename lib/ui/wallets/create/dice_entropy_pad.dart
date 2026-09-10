@@ -79,11 +79,7 @@ class DieColor {
 /// Inspired by Fantastic Dice / dice-box (Ammo rigid bodies): motion and the
 /// final face are one simulation — no separate “snap to random face” step.
 class _DieBody {
-  _DieBody({
-    required this.colorIndex,
-    required this.x,
-    required this.y,
-  });
+  _DieBody({required this.colorIndex, required this.x, required this.y});
 
   final int colorIndex;
 
@@ -117,17 +113,14 @@ class _DieBody {
 
 /// Swipeable dice pad with continuous physics-style tumbling.
 class DiceEntropyPad extends StatefulWidget {
-  const DiceEntropyPad({
-    super.key,
-    required this.onChanged,
-    this.height = 300,
-  });
+  const DiceEntropyPad({super.key, required this.onChanged, this.height = 300});
 
   final void Function({
     required double motionScore,
     required List<int> faces,
     required List<DiceRollSample> rolls,
-  }) onChanged;
+  })
+  onChanged;
 
   final double height;
 
@@ -140,6 +133,7 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
   static const int _dieCount = 5;
   static const double _dieSize = 46;
   static const double _half = _dieSize / 2;
+
   /// Keep centers far enough that cubes rarely stack as a pack.
   static const double _sep = _dieSize + 18;
   static const double _wall = 10;
@@ -245,11 +239,11 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
   }
 
   Rect get _bounds => Rect.fromLTRB(
-        _wall,
-        _wall,
-        math.max(_wall + _dieSize, _area.width - _wall),
-        math.max(_wall + _dieSize, _area.height - _wall),
-      );
+    _wall,
+    _wall,
+    math.max(_wall + _dieSize, _area.width - _wall),
+    math.max(_wall + _dieSize, _area.height - _wall),
+  );
 
   void _notify() {
     widget.onChanged(
@@ -379,11 +373,23 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
               c.x = (c.x + nx * overlap).clamp(b.left + _half, b.right - _half);
               c.y = (c.y + ny * overlap).clamp(b.top + _half, b.bottom - _half);
             } else if (aFixed && !cFixed) {
-              c.x = (c.x + nx * overlap * 2).clamp(b.left + _half, b.right - _half);
-              c.y = (c.y + ny * overlap * 2).clamp(b.top + _half, b.bottom - _half);
+              c.x = (c.x + nx * overlap * 2).clamp(
+                b.left + _half,
+                b.right - _half,
+              );
+              c.y = (c.y + ny * overlap * 2).clamp(
+                b.top + _half,
+                b.bottom - _half,
+              );
             } else if (!aFixed && cFixed) {
-              a.x = (a.x - nx * overlap * 2).clamp(b.left + _half, b.right - _half);
-              a.y = (a.y - ny * overlap * 2).clamp(b.top + _half, b.bottom - _half);
+              a.x = (a.x - nx * overlap * 2).clamp(
+                b.left + _half,
+                b.right - _half,
+              );
+              a.y = (a.y - ny * overlap * 2).clamp(
+                b.top + _half,
+                b.bottom - _half,
+              );
             }
             if (bounce) {
               final vn = (a.vx - c.vx) * nx + (a.vy - c.vy) * ny;
@@ -721,7 +727,9 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
     final fling = details.velocity.pixelsPerSecond;
     final baseVx = (_swipeVx * 0.5 + fling.dx * 0.18).clamp(-480.0, 480.0);
     final baseVy = (_swipeVy * 0.5 + fling.dy * 0.18).clamp(-480.0, 480.0);
-    final baseSpd = math.sqrt(baseVx * baseVx + baseVy * baseVy).clamp(1.0, 600.0);
+    final baseSpd = math
+        .sqrt(baseVx * baseVx + baseVy * baseVy)
+        .clamp(1.0, 600.0);
     final fx = baseVx / baseSpd;
     final fy = baseVy / baseSpd;
     final px = -fy;
@@ -740,12 +748,19 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
       final dirY = fx * sinA + fy * cosA;
 
       final speedMul = 0.55 + _rng.nextDouble() * 0.7 + i * 0.04;
-      final sideBurst = (i.isEven ? 1.0 : -1.0) *
+      final sideBurst =
+          (i.isEven ? 1.0 : -1.0) *
           (60 + _rng.nextDouble() * 140) *
           (0.7 + baseSpd / 500);
 
-      d.vx = dirX * baseSpd * speedMul + px * sideBurst + (_rng.nextDouble() - 0.5) * 50;
-      d.vy = dirY * baseSpd * speedMul + py * sideBurst + (_rng.nextDouble() - 0.5) * 50;
+      d.vx =
+          dirX * baseSpd * speedMul +
+          px * sideBurst +
+          (_rng.nextDouble() - 0.5) * 50;
+      d.vy =
+          dirY * baseSpd * speedMul +
+          py * sideBurst +
+          (_rng.nextDouble() - 0.5) * 50;
 
       // Nudge from current position so clustered dice start separating
       d.x += px * (i - 2) * 6 + (_rng.nextDouble() - 0.5) * 8;
@@ -761,8 +776,10 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
 
       final throwSpd = math.sqrt(d.vx * d.vx + d.vy * d.vy);
       final spinScale = (throwSpd / 400).clamp(0.25, 1.0);
-      d.wx = -d.vy * 0.012 * spinScale + (_rng.nextDouble() - 0.5) * 4 * spinScale;
-      d.wy = d.vx * 0.012 * spinScale + (_rng.nextDouble() - 0.5) * 4 * spinScale;
+      d.wx =
+          -d.vy * 0.012 * spinScale + (_rng.nextDouble() - 0.5) * 4 * spinScale;
+      d.wy =
+          d.vx * 0.012 * spinScale + (_rng.nextDouble() - 0.5) * 4 * spinScale;
       d.wz = (_rng.nextDouble() - 0.5) * 3.5 * spinScale;
       d.easingToRest = false;
       d.settled = false;
@@ -919,10 +936,7 @@ class DiceEntropyPadState extends State<DiceEntropyPad>
           alignment: WrapAlignment.center,
           children: [
             for (var i = 0; i < _dice.length; i++)
-              _FaceChip(
-                value: _dice[i].face,
-                color: DieColor.palette[i],
-              ),
+              _FaceChip(value: _dice[i].face, color: DieColor.palette[i]),
           ],
         ),
       ],
@@ -1075,7 +1089,11 @@ class _CubeDiePainter extends CustomPainter {
       ..color = Colors.black.withValues(alpha: 0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy + h * 0.85), width: size * 0.9, height: size * 0.28),
+      Rect.fromCenter(
+        center: Offset(cx, cy + h * 0.85),
+        width: size * 0.9,
+        height: size * 0.28,
+      ),
       shadow,
     );
 
@@ -1094,10 +1112,7 @@ class _CubeDiePainter extends CustomPainter {
         return Offset(cx + w.x * scale, cy + w.y * scale);
       }).toList();
 
-      final depth = f.corners
-              .map((c) => _rot(c).z)
-              .reduce((a, b) => a + b) /
-          4;
+      final depth = f.corners.map((c) => _rot(c).z).reduce((a, b) => a + b) / 4;
 
       projected.add(
         _ProjFace(

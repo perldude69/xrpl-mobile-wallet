@@ -16,18 +16,27 @@ class Rlusd {
   static const testnetIssuer = 'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV';
 
   static String issuerFor(NetworkId network) => switch (network) {
-        NetworkId.mainnet => mainnetIssuer,
-        NetworkId.testnet => testnetIssuer,
-      };
+    NetworkId.mainnet => mainnetIssuer,
+    NetworkId.testnet => testnetIssuer,
+  };
+
+  /// Ledger currency for RLUSD: 40-char hex, or the ASCII code some nodes return.
+  static bool isCurrency(String currency) {
+    final c = currency.trim().toUpperCase();
+    return c == currencyHex || c == 'RLUSD';
+  }
 
   /// True when [currency] + [issuer] is the official RLUSD line on [network].
+  ///
+  /// Mainnet and testnet issuers are different. A mainnet line must not count
+  /// on testnet, and the reverse.
   static bool matchesLine({
     required String currency,
     String? issuer,
     required NetworkId network,
   }) {
     if (issuer == null || issuer.isEmpty) return false;
-    if (currency.trim().toUpperCase() != currencyHex) return false;
+    if (!isCurrency(currency)) return false;
     return issuer.trim() == issuerFor(network);
   }
 

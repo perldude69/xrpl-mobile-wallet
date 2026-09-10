@@ -141,7 +141,10 @@ class WalletListController extends StateNotifier<WalletListState> {
   /// Persist an import: secret (if any) → KeyVault, metadata → SQLite.
   Future<void> addImported(ImportResult result) async {
     final account = result.account;
-    ensureUniqueAddress(state.wallets, account.address);
+    ensureUniqueAddress(
+      await _walletsOn(account.preferredNetwork),
+      account.address,
+    );
     final secret = result.secret;
     if (secret != null) {
       await _keyVault.saveSecret(account.id, secret);
@@ -170,14 +173,16 @@ class WalletListController extends StateNotifier<WalletListState> {
     required String label,
     required String address,
     required int accountIndex,
+    NetworkId? preferredNetwork,
   }) async {
-    ensureUniqueAddress(state.wallets, address);
+    final network = preferredNetwork ?? _network.state.network;
+    ensureUniqueAddress(await _walletsOn(network), address);
     final account = WalletAccount(
       id: const Uuid().v4(),
       label: label.trim().isEmpty ? 'Ledger $accountIndex' : label.trim(),
       address: address,
       kind: WalletKind.watchOnly,
-      preferredNetwork: _network.state.network,
+      preferredNetwork: network,
       importMethod: ImportMethod.ledger,
       createdAt: DateTime.now().toUtc(),
       useLedger: true,
@@ -350,7 +355,19 @@ class WalletListController extends StateNotifier<WalletListState> {
     }
   }
 
-  /// Throws if [address] is already saved (create / import / attach-keys).
+  Future<List<WalletAccount>> _walletsOn(NetworkId network) async {
+    final rows = await _db.getAllWallets();
+    return rows
+        .map(_toAccount)
+        .where((a) => a.preferredNetwork == network)
+        .toList();
+  }
+
+  /// Throws if [address] is already in [wallets].
+  ///
+  /// Callers pass the in-memory list, which [reload] has already filtered to
+  /// the active network. The same classic address may therefore be saved once
+  /// per network (mainnet and testnet as separate rows).
   static void ensureUniqueAddress(List<WalletAccount> wallets, String address) {
     if (wallets.any((w) => w.address == address)) {
       throw ArgumentError('A wallet with this address is already saved');

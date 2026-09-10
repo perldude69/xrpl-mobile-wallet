@@ -6,6 +6,8 @@ import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/state/price_feed_controller.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_marks.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/treasure_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/detail/wallet_detail_screen.dart';
 
 class WalletListScreen extends ConsumerStatefulWidget {
@@ -90,10 +92,10 @@ class _WalletListScreenState extends ConsumerState<WalletListScreen> {
                     },
                     child: ListView.separated(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
                       itemCount: listState.wallets.length + 1,
                       separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
+                          const SizedBox(height: 8),
                       itemBuilder: (context, i) {
                         if (i == 0) {
                           return _PortfolioSummary(
@@ -239,7 +241,7 @@ class _PortfolioSummary extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 else
-                  Icon(Icons.account_balance_wallet, color: onC),
+                  const JollyRogerMark(size: 40),
               ],
             ),
           ),
@@ -268,15 +270,11 @@ class _EmptyWallets extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
+            const PirateMascot(size: 128),
             const SizedBox(height: 16),
             Text(
-              'No wallets yet',
-              style: Theme.of(context).textTheme.titleMedium,
+              'No treasure yet',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
@@ -316,7 +314,6 @@ class _WalletTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = account.displayColor;
     final usd = FiatFormat.xrpToUsd(xrpBalance, usdPerXrp);
     final primary = displayFiat && usd != null
         ? FiatFormat.formatUsd(usd)
@@ -327,48 +324,39 @@ class _WalletTile extends StatelessWidget {
               ? '≈ ${FiatFormat.formatUsd(usd)}'
               : null);
 
-    return ListTile(
-      isThreeLine: true,
-      minVerticalPadding: 8,
-      leading: CircleAvatar(
-        backgroundColor: color,
-        child: Text(
-          account.label.isNotEmpty ? account.label[0].toUpperCase() : '?',
-          style: TextStyle(
-            color:
-                ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-                ? Colors.white
-                : Colors.black87,
-            fontWeight: FontWeight.w700,
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        isThreeLine: true,
+        minVerticalPadding: 8,
+        leading: TreasureAvatar(account: account),
+        title: Text(account.label),
+        subtitle: Text(_shorten(account.address)),
+        trailing: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(primary, style: Theme.of(context).textTheme.titleSmall),
+              if (secondary != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  secondary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 2),
+              _KindBadge(account: account),
+            ],
           ),
         ),
+        onTap: onTap,
       ),
-      title: Text(account.label),
-      subtitle: Text(_shorten(account.address)),
-      trailing: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerRight,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(primary, style: Theme.of(context).textTheme.titleSmall),
-            if (secondary != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                secondary,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(height: 2),
-            _KindBadge(account: account),
-          ],
-        ),
-      ),
-      onTap: onTap,
     );
   }
 

@@ -112,13 +112,20 @@ class EndpointPreferences {
   SharedPreferences? _prefs;
   final Uuid _uuid;
 
-  /// Injected only during a trusted local build. Never commit the bearer
-  /// token or show the query string in status UI.
-  static const _wssToken = String.fromEnvironment('WSS_TOKEN');
+  /// Maintainer WSS access token. Compiled into Play/release builds so opt-in
+  /// `wss.rich-list.info` works without a local `--dart-define`. Override with
+  /// `--dart-define=WSS_TOKEN=...` if needed. Never shown in status UI (host
+  /// only).
+  static const _wssToken = String.fromEnvironment(
+    'WSS_TOKEN',
+    defaultValue:
+        'd7d5ce52dffffd50b2ce354d6d2be91ee99ca5816fe8ad49dc0630dca9a3acb3',
+  );
   static const _defaultsMigrationKey = 'endpoint_defaults_migrated_v2';
-  static String get _richListWssUrl => _wssToken.isEmpty
-      ? 'wss://wss.rich-list.info'
-      : 'wss://wss.rich-list.info/?token=$_wssToken';
+  static const _httpDefaultsMigrationKey = 'http_defaults_migrated_v3';
+  static const _wssDefaultsMigrationKey = 'wss_defaults_migrated_v3';
+  static String get _richListWssUrl =>
+      'wss://wss.rich-list.info/?token=$_wssToken';
 
   /// Mainnet HTTP JSON-RPC catalog (order = default preference).
   ///
@@ -171,9 +178,9 @@ class EndpointPreferences {
 
   /// Ids enabled on a stock install. Excludes `rich-list` (maintainer-operated):
   /// it is in the catalog for users who opt in, not in the default selection.
-  static List<String> get defaultHttpIds => const ['rich-list'];
+  static List<String> get defaultHttpIds => const ['cluster', 'ankr'];
 
-  static List<String> get defaultWssIds => const ['rich-list'];
+  static List<String> get defaultWssIds => const ['cluster', 'ankr'];
 
   Future<SharedPreferences> _ensure() async {
     return _prefs ??= await SharedPreferences.getInstance();
@@ -182,6 +189,16 @@ class EndpointPreferences {
   Future<List<String>> selectedHttpIds() async {
     final p = await _ensure();
     final raw = p.getString(StorageKeys.mainnetHttpEndpointIds);
+    // Older builds selected the maintainer RPC by default. Its compact node
+    // does not retain enough history for a wallet activity screen.
+    if (p.getBool(_httpDefaultsMigrationKey) != true && raw == 'rich-list') {
+      await p.setString(
+        StorageKeys.mainnetHttpEndpointIds,
+        defaultHttpIds.join(','),
+      );
+      await p.setBool(_httpDefaultsMigrationKey, true);
+      return defaultHttpIds;
+    }
     if (p.getBool(_defaultsMigrationKey) != true &&
         (raw == 'cluster,ankr' || raw == 'ankr,cluster')) {
       await p.setString(
@@ -189,6 +206,7 @@ class EndpointPreferences {
         defaultHttpIds.join(','),
       );
       await p.setBool(_defaultsMigrationKey, true);
+      await p.setBool(_httpDefaultsMigrationKey, true);
       return defaultHttpIds;
     }
     return _parseIds(raw, defaultHttpIds, mainnetHttpCatalog.map((e) => e.id));
@@ -197,6 +215,17 @@ class EndpointPreferences {
   Future<List<String>> selectedWssIds() async {
     final p = await _ensure();
     final raw = p.getString(StorageKeys.mainnetWssEndpointIds);
+    // Older builds selected the maintainer endpoint by default. It now requires
+    // deployment-specific access, so migrate that untouched default to public
+    // endpoints while preserving explicit user selections thereafter.
+    if (p.getBool(_wssDefaultsMigrationKey) != true && raw == 'rich-list') {
+      await p.setString(
+        StorageKeys.mainnetWssEndpointIds,
+        defaultWssIds.join(','),
+      );
+      await p.setBool(_wssDefaultsMigrationKey, true);
+      return defaultWssIds;
+    }
     if (p.getBool(_defaultsMigrationKey) != true &&
         (raw == 'cluster,ankr' || raw == 'ankr,cluster')) {
       await p.setString(
@@ -204,6 +233,7 @@ class EndpointPreferences {
         defaultWssIds.join(','),
       );
       await p.setBool(_defaultsMigrationKey, true);
+      await p.setBool(_wssDefaultsMigrationKey, true);
       return defaultWssIds;
     }
     return _parseIds(raw, defaultWssIds, mainnetWssCatalog.map((e) => e.id));
@@ -221,6 +251,7 @@ class EndpointPreferences {
     final p = await _ensure();
     await p.setString(StorageKeys.mainnetHttpEndpointIds, cleaned.join(','));
     await p.setBool(_defaultsMigrationKey, true);
+    await p.setBool(_httpDefaultsMigrationKey, true);
     return cleaned;
   }
 
@@ -234,6 +265,7 @@ class EndpointPreferences {
     final p = await _ensure();
     await p.setString(StorageKeys.mainnetWssEndpointIds, cleaned.join(','));
     await p.setBool(_defaultsMigrationKey, true);
+    await p.setBool(_wssDefaultsMigrationKey, true);
     return cleaned;
   }
 

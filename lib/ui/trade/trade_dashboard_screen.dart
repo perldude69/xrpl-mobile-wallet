@@ -9,7 +9,9 @@ import 'package:xrpl_mobile_wallet/domain/trade/trade_pair.dart';
 import 'package:xrpl_mobile_wallet/domain/trade/trade_rate.dart';
 import 'package:xrpl_mobile_wallet/domain/trade/trade_status.dart';
 import 'package:xrpl_mobile_wallet/domain/trade/order_draft.dart';
+import 'package:xrpl_mobile_wallet/domain/trade/amm_pool.dart';
 import 'package:xrpl_mobile_wallet/domain/trade/order_book.dart';
+import 'package:xrpl_mobile_wallet/domain/trade/tape_format.dart';
 import 'package:xrpl_mobile_wallet/domain/trade/slippage.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
@@ -18,7 +20,7 @@ import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/trade_controller.dart';
 import 'package:xrpl_mobile_wallet/state/order_book_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
-import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/swipe_to_sign.dart';
 import 'package:xrpl_mobile_wallet/ui/trade/trade_errors.dart';
 import 'package:xrpl_mobile_wallet/ui/trade/trade_status_labels.dart';
 import 'package:xrpl_mobile_wallet/ui/trade/order_book_panel.dart';
@@ -107,6 +109,8 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
       }
     }
     if (!mounted) return;
+    ref.invalidate(orderBookProvider(_controller.pair));
+    ref.invalidate(ammPoolProvider(_controller.pair));
     await _controller.load();
   }
 
@@ -130,12 +134,11 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
   Future<void> _cancel(OpenOffer entry) async {
     if (!widget.account.canSign) return;
     try {
-      final ok = await promptAndVerifyWalletPin(
+      final ok = await promptSwipeToSign(
         context,
-        ref,
         title: 'Cancel offer',
-        message: 'Enter your wallet PIN to cancel offer ${entry.sequence}.',
-        confirmLabel: 'Cancel offer',
+        message: 'Slide to sign the cancel for offer ${entry.sequence}.',
+        actionLabel: 'Slide to cancel',
       );
       if (!ok || !mounted) return;
       final result = widget.account.hasLocalKeys
@@ -232,7 +235,11 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
     }
     final reviewed = await showDialog<bool>(
       context: context,
-      builder: (_) => _OfferReviewDialog(draft: draft, preflight: preflight),
+      builder: (_) => _OfferReviewDialog(
+        draft: draft,
+        preflight: preflight,
+        amm: ref.read(ammPoolProvider(_controller.pair)).valueOrNull,
+      ),
     );
     if (reviewed != true || !mounted) return;
 
@@ -242,12 +249,10 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
     }
 
     try {
-      final ok = await promptAndVerifyWalletPin(
+      final ok = await promptSwipeToSign(
         context,
-        ref,
         title: 'Create limit order',
-        message: 'Enter your wallet PIN to sign this offer.',
-        confirmLabel: 'Sign offer',
+        message: 'Slide to sign this offer. The wallet is already unlocked.',
       );
       if (!ok || !mounted) return;
       final result = widget.account.hasLocalKeys
@@ -312,7 +317,10 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
     }
     final review = await showDialog<bool>(
       context: context,
-      builder: (_) => _MarketReviewDialog(draft: draft),
+      builder: (_) => _MarketReviewDialog(
+        draft: draft,
+        amm: ref.read(ammPoolProvider(pair)).valueOrNull,
+      ),
     );
     if (review != true || !mounted) return;
     if (!widget.account.canSign) {
@@ -320,12 +328,10 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
       return;
     }
     try {
-      final ok = await promptAndVerifyWalletPin(
+      final ok = await promptSwipeToSign(
         context,
-        ref,
         title: 'Submit market order',
-        message: 'Enter your wallet PIN to sign this order.',
-        confirmLabel: 'Sign order',
+        message: 'Slide to sign this order. The wallet is already unlocked.',
       );
       if (!ok || !mounted) return;
       final result = widget.account.hasLocalKeys
@@ -416,6 +422,7 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
     final state = ref.watch(tradeControllerProvider(widget.account.id));
     final canSign = _canSignTrades;
     final book = ref.watch(orderBookProvider(_controller.pair));
+    final amm = ref.watch(ammPoolProvider(_controller.pair)).valueOrNull;
     final currentSnapshot = book.value;
     if (currentSnapshot != null) _lastOrderBook = currentSnapshot;
     final visibleSnapshot = currentSnapshot ?? _lastOrderBook;
@@ -437,8 +444,11 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
             if (visibleSnapshot != null)
               OrderBookPanel(
                 snapshot: visibleSnapshot,
-                onRefresh: () =>
-                    ref.invalidate(orderBookProvider(_controller.pair)),
+                amm: amm,
+                onRefresh: () {
+                  ref.invalidate(orderBookProvider(_controller.pair));
+                  ref.invalidate(ammPoolProvider(_controller.pair));
+                },
               )
             else if (book.hasError)
               Card(
@@ -450,8 +460,10 @@ class _TradeDashboardScreenState extends ConsumerState<TradeDashboardScreen> {
                   ),
                   trailing: IconButton(
                     tooltip: 'Retry order book',
-                    onPressed: () =>
-                        ref.invalidate(orderBookProvider(_controller.pair)),
+                    onPressed: () {
+                      ref.invalidate(orderBookProvider(_controller.pair));
+                      ref.invalidate(ammPoolProvider(_controller.pair));
+                    },
                     icon: const Icon(Icons.refresh),
                   ),
                 ),
@@ -779,14 +791,37 @@ class _MarketOrderDialogState extends State<_MarketOrderDialog> {
 }
 
 class _MarketReviewDialog extends StatelessWidget {
-  const _MarketReviewDialog({required this.draft});
+  const _MarketReviewDialog({required this.draft, this.amm});
   final MarketOrderDraft draft;
+  final AmmPoolSnapshot? amm;
+
+  String _reviewText() {
+    final pool = amm;
+    final ammLines = StringBuffer();
+    if (pool != null) {
+      ammLines.writeln(
+        'AMM spot ${formatTapeDecimal(pool.spot)} · fee ${pool.feePercentLabel}',
+      );
+      if (draft.side == TradeSide.sell) {
+        final out = pool.quoteOutForXrpIn(draft.baseAmount);
+        ammLines.writeln(
+          'AMM-only estimate: ${formatTapeDecimal(out)} RLUSD for ${draft.baseAmount} XRP',
+        );
+      }
+    }
+    return '${draft.side == TradeSide.sell ? 'Sell' : 'Buy'} ${draft.baseAmount} XRP\n'
+        'Maximum slippage: ${draft.slippage.percentLabel}%\n'
+        'Worst allowed rate: ${draft.limitRate}\n'
+        '${draft.timeInForce == TimeInForce.fillOrKill ? 'Fill or kill' : 'Immediate or cancel'}\n\n'
+        '$ammLines'
+        'The ledger may mix order-book and AMM liquidity. The worst allowed '
+        'rate is still enforced on-ledger.';
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Review market order'),
-    content: Text(
-      '${draft.side == TradeSide.sell ? 'Sell' : 'Buy'} ${draft.baseAmount} XRP\nMaximum slippage: ${draft.slippage.percentLabel}%\nWorst allowed rate: ${draft.limitRate}\n${draft.timeInForce == TimeInForce.fillOrKill ? 'Fill or kill' : 'Immediate or cancel'}\n\nThe order may match order-book or AMM liquidity. The ledger enforces the worst-rate bound and the order will never rest on the book.',
-    ),
+    content: Text(_reviewText()),
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context, false),
@@ -893,10 +928,15 @@ class _OfferDraftDialog extends StatefulWidget {
 }
 
 class _OfferReviewDialog extends StatelessWidget {
-  const _OfferReviewDialog({required this.draft, required this.preflight});
+  const _OfferReviewDialog({
+    required this.draft,
+    required this.preflight,
+    this.amm,
+  });
 
   final _OfferDraft draft;
   final _TradePreflight preflight;
+  final AmmPoolSnapshot? amm;
 
   String _asset(String currency, String issuer) {
     if (currency == 'XRP') return 'XRP';
@@ -945,9 +985,13 @@ class _OfferReviewDialog extends StatelessWidget {
               'cancelled, or expired, and the offered funds stay locked until then.',
             ),
             const SizedBox(height: 12),
-            const Text(
-              'The XRPL trading engine may match this order against order-book '
-              'or AMM liquidity. The ledger still enforces the limit rate.',
+            Text(
+              amm == null
+                  ? 'The XRPL trading engine may match this order against '
+                        'order-book or AMM liquidity. The ledger still enforces '
+                        'the limit rate.'
+                  : 'AMM spot ${formatTapeDecimal(amm!.spot)} · fee ${amm!.feePercentLabel}. '
+                        'The engine may match book or AMM; the limit rate still binds.',
             ),
           ],
         ),

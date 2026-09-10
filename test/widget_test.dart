@@ -2,9 +2,11 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xrpl_mobile_wallet/config/theme.dart';
 import 'package:xrpl_mobile_wallet/data/database/app_database.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/ui/shell/main_shell.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_backdrop.dart';
 
 void main() {
   // One in-memory database shared by both tests. Without an override each test
@@ -17,7 +19,12 @@ void main() {
 
   Widget harness() => ProviderScope(
     overrides: [databaseProvider.overrideWithValue(db)],
-    child: const MaterialApp(home: MainShell()),
+    child: MaterialApp(
+      theme: buildAppTheme(),
+      builder: (context, child) =>
+          PirateBackdrop(child: child ?? const SizedBox.shrink()),
+      home: const MainShell(),
+    ),
   );
 
   testWidgets('shell shows Wallets tab', (tester) async {
@@ -29,6 +36,6 @@ void main() {
     await tester.pumpWidget(harness());
     await tester.tap(find.text('Settings').last);
     await tester.pump();
-    expect(find.byIcon(Icons.coffee), findsWidgets);
+    expect(find.byTooltip('Buy the developer a coffee'), findsOneWidget);
   });
 }

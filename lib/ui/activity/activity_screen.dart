@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/activity/tx_detail_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -104,12 +105,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: items.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
                     itemBuilder: (context, i) {
                       final item = items[i];
                       return _TxTile(
                         item: item,
-                        showWalletLabel: wallets.length > 1 &&
+                        showWalletLabel:
+                            wallets.length > 1 &&
                             activity.filterWalletId == null,
                         onTap: () {
                           Navigator.of(context).push(
@@ -129,10 +132,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
 }
 
 class _EmptyActivity extends StatelessWidget {
-  const _EmptyActivity({
-    required this.hasWallets,
-    required this.refreshing,
-  });
+  const _EmptyActivity({required this.hasWallets, required this.refreshing});
 
   final bool hasWallets;
   final bool refreshing;
@@ -149,8 +149,8 @@ class _EmptyActivity extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.history,
+            PirateIcon(
+              glyph: PirateGlyph.scroll,
               size: 64,
               color: Theme.of(context).colorScheme.outline,
             ),

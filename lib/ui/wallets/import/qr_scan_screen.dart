@@ -47,7 +47,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cameraOk = !kIsWeb &&
+    final cameraOk =
+        !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.iOS);
 
@@ -103,10 +104,9 @@ class _QrScanScreenState extends State<QrScanScreen> {
                       children: [
                         Text(
                           'Point the camera at a wallet address QR code',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.white),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(color: Colors.white),
                           textAlign: TextAlign.center,
                         ),
                         if (_lastError != null) ...[

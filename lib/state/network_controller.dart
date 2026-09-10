@@ -9,12 +9,7 @@ export 'package:xrpl_mobile_wallet/config/network_id.dart';
 /// Connection lifecycle for the ledger RPC client.
 ///
 /// Named to avoid clashing with Flutter's [ConnectionState].
-enum NetworkConnectionState {
-  disconnected,
-  connecting,
-  connected,
-  error,
-}
+enum NetworkConnectionState { disconnected, connecting, connected, error }
 
 class NetworkState {
   const NetworkState({
@@ -23,6 +18,7 @@ class NetworkState {
     this.errorMessage,
     this.activeNodeHost,
     this.activeNodeUrl,
+    this.batchAmendmentEnabled = false,
   });
 
   final NetworkId network;
@@ -35,6 +31,9 @@ class NetworkState {
   /// Full URL of the active JSON-RPC HTTP node, if known.
   final String? activeNodeUrl;
 
+  /// Connected node has enabled BatchV1_1. Re-probed on each [connect].
+  final bool batchAmendmentEnabled;
+
   bool get isConnected => connection == NetworkConnectionState.connected;
 
   NetworkState copyWith({
@@ -45,15 +44,21 @@ class NetworkState {
     String? activeNodeHost,
     String? activeNodeUrl,
     bool clearActiveNode = false,
+    bool? batchAmendmentEnabled,
   }) {
     return NetworkState(
       network: network ?? this.network,
       connection: connection ?? this.connection,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      activeNodeHost:
-          clearActiveNode ? null : (activeNodeHost ?? this.activeNodeHost),
-      activeNodeUrl:
-          clearActiveNode ? null : (activeNodeUrl ?? this.activeNodeUrl),
+      activeNodeHost: clearActiveNode
+          ? null
+          : (activeNodeHost ?? this.activeNodeHost),
+      activeNodeUrl: clearActiveNode
+          ? null
+          : (activeNodeUrl ?? this.activeNodeUrl),
+      batchAmendmentEnabled: clearActiveNode
+          ? false
+          : (batchAmendmentEnabled ?? this.batchAmendmentEnabled),
     );
   }
 }
@@ -63,14 +68,14 @@ class NetworkController extends StateNotifier<NetworkState> {
     this._client, {
     AccountWatcher? watcher,
     EndpointPreferences? endpoints,
-  })  : _watcher = watcher ?? AccountWatcher(),
-        _endpoints = endpoints ?? EndpointPreferences(),
-        super(
-          const NetworkState(
-            network: NetworkId.mainnet,
-            connection: NetworkConnectionState.disconnected,
-          ),
-        );
+  }) : _watcher = watcher ?? AccountWatcher(),
+       _endpoints = endpoints ?? EndpointPreferences(),
+       super(
+         const NetworkState(
+           network: NetworkId.mainnet,
+           connection: NetworkConnectionState.disconnected,
+         ),
+       );
 
   final XrplRpcClient _client;
   final AccountWatcher _watcher;
@@ -104,11 +109,16 @@ class NetworkController extends StateNotifier<NetworkState> {
     try {
       final urls = await _endpoints.httpUrls(target);
       await _client.connect(target, httpUrls: urls);
+      var batchEnabled = false;
+      try {
+        batchEnabled = await _client.batchAmendmentEnabled();
+      } catch (_) {}
       state = NetworkState(
         network: target,
         connection: NetworkConnectionState.connected,
         activeNodeHost: _client.activeHttpHost,
         activeNodeUrl: _client.activeHttpUrl,
+        batchAmendmentEnabled: batchEnabled,
       );
     } catch (e) {
       await _client.disconnect();
@@ -217,8 +227,8 @@ final endpointPreferencesProvider = Provider<EndpointPreferences>((ref) {
 
 final networkControllerProvider =
     StateNotifierProvider<NetworkController, NetworkState>((ref) {
-  return NetworkController(
-    ref.watch(xrplRpcClientProvider),
-    endpoints: ref.watch(endpointPreferencesProvider),
-  );
-});
+      return NetworkController(
+        ref.watch(xrplRpcClientProvider),
+        endpoints: ref.watch(endpointPreferencesProvider),
+      );
+    });

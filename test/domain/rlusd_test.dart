@@ -37,6 +37,25 @@ void main() {
       );
     });
 
+    test('accepts ASCII RLUSD on the matching network', () {
+      expect(
+        Rlusd.matchesLine(
+          currency: 'RLUSD',
+          issuer: Rlusd.testnetIssuer,
+          network: NetworkId.testnet,
+        ),
+        isTrue,
+      );
+      expect(
+        Rlusd.matchesLine(
+          currency: 'rlusd',
+          issuer: Rlusd.testnetIssuer,
+          network: NetworkId.testnet,
+        ),
+        isTrue,
+      );
+    });
+
     test('rejects wrong issuer, XRP, and other hex', () {
       expect(
         Rlusd.matchesLine(
@@ -112,6 +131,26 @@ void main() {
           canSign: true,
           network: NetworkId.testnet,
           lines: rlusdMainnet,
+        ),
+        isTrue,
+      );
+    });
+
+    test('testnet ASCII RLUSD hides add on testnet only', () {
+      final testnetLine = [(currency: 'RLUSD', issuer: Rlusd.testnetIssuer)];
+      expect(
+        Rlusd.shouldShowAdd(
+          canSign: true,
+          network: NetworkId.testnet,
+          lines: testnetLine,
+        ),
+        isFalse,
+      );
+      expect(
+        Rlusd.shouldShowAdd(
+          canSign: true,
+          network: NetworkId.mainnet,
+          lines: testnetLine,
         ),
         isTrue,
       );

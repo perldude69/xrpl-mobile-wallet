@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_dialogs.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 /// PIN and game PIN settings.
@@ -198,14 +199,14 @@ class _SecuritySettingsState extends ConsumerState<SecuritySettings> {
           child: Text('Security', style: sectionStyle),
         ),
         ListTile(
-          leading: const Icon(Icons.pin_outlined),
+          leading: const PirateIcon(glyph: PirateGlyph.eyepatch),
           title: const Text('Change PIN'),
           subtitle: const Text('Require current PIN, then set a new one'),
           enabled: !_busy,
           onTap: _busy ? null : _changePin,
         ),
         ListTile(
-          leading: const Icon(Icons.sports_esports_outlined),
+          leading: const PirateIcon(glyph: PirateGlyph.helm),
           title: const Text('Game PIN'),
           subtitle: Text(
             _hasGamePin

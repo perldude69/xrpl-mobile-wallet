@@ -9,6 +9,7 @@ import 'state/wallet_list_controller.dart';
 import 'ui/lock/pin/setup_pin_screen.dart';
 import 'ui/lock/pin/unlock_screen.dart';
 import 'ui/shell/main_shell.dart';
+import 'ui/theme/pirate_backdrop.dart';
 
 class XrplWalletApp extends StatelessWidget {
   const XrplWalletApp({super.key});
@@ -19,6 +20,8 @@ class XrplWalletApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Zerp Wallet',
         theme: buildAppTheme(),
+        builder: (context, child) =>
+            PirateBackdrop(child: child ?? const SizedBox.shrink()),
         home: const _AppGate(),
         debugShowCheckedModeBanner: false,
       ),

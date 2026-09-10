@@ -19,7 +19,8 @@ progress checks. Consequences that bind every decision:
   (`android/key.properties`); `tool/build_release.sh` remains the sideload path.
 
 Plan: `docs/design/2026-09-06-consolidated-plan.md` (Part I = shipped spec —
-core design, attach-keys, game PIN; Part II = queued work — smart trade execution)
+core design, attach-keys, game PIN, XRP⇄RLUSD trade, timed XRP escrow;
+Part II = remaining queue — batch recipes beyond XRP multi-send, escrow deferred items, trade polish)
 History: `docs/history/2026-07-20-xrpl-mobile-wallet.md`
 User-facing notes: `README.md`
 
@@ -47,9 +48,9 @@ lib/
   main.dart, app.dart          # bootstrap, ProviderScope, lock gate
   config/                      # app knobs, storage key names, network id, theme, app_exit
   domain/                      # amount, wallet, validation, tokens, network, oracle (no I/O)
-  data/                        # database, secure, xrpl_rpc, ledger_device, endpoints, payments, wallet, watcher, game
+  data/                        # database, secure, xrpl_rpc, ledger_device, endpoints, payments, trade, wallet, watcher, game
   state/                       # Riverpod controllers + providers.dart
-  ui/                          # shell, wallets/{list,detail,create,import,receive,attach_keys}, lock/{pin,runner}, send, activity, settings/{network,security,backup}, network
+  ui/                          # shell, wallets/{list,detail,create,import,receive,attach_keys}, lock/{pin,runner}, send, activity, trade, settings/{network,security,backup,escrow,monitoring,wallet}
 test/                          # mirrors lib
 packages/ledger_usb_plus/      # vendored Ledger USB plugin (path dep, see Stack)
 assets/tokens/                 # XRPSCAN snapshot (offline names)
@@ -70,6 +71,12 @@ flutter pub get
 flutter analyze
 flutter test
 flutter run
+```
+
+Layout sandbox (not the Play app): `widgetbook/` is a **separate** Flutter project. Never ship it in the release APK.
+
+```bash
+cd widgetbook && flutter run -d chrome
 ```
 
 Release APKs must go through `tool/build_release.sh` — it adds
@@ -147,7 +154,9 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 - **XRP/USD:** XRPL-Labs TrustSet oracle `rXUMMaPpZqPutoRszR29jtC8amWq3APkx` (`XrpUsdOracle` parser, `PriceFeedController`, last rate in prefs). Portfolio toggle XRP vs USD — not a trading feed.
 - **Payments:** Build/sign/submit software txs in `PaymentService`; secrets passed in from KeyVault at the call site, not stored on the service. Amounts via `XrpAmount` (drops as `BigInt` strings). Ledger send signs on device then submits the blob. RLUSD TrustSet (official issuer, NoRipple) uses the same generic sign/submit helper as Payment; only shown when `canSign` and the line is not already on `account_lines`.
 - **Drift:** Edit `tables.dart` / `app_database.dart`; never hand-edit `app_database.g.dart`. Migrations: v2 `accentColor`, v3 `useLedger` + `ledgerAccountIndex`, v4 `trade_executions` + `trade_fills`.
-- **Trade:** XRP ⇄ RLUSD only. Pure logic in `lib/domain/trade/` (no `double` — money maths goes through `TradeDecimal`); services in `lib/data/trade/`; `TradeRepository` is the only thing that touches the trade tables. The reconciler runs in the **UI process** (kicked from `LockLifecycle` at unlock and on resume), never in the watcher isolate — a second `AppDatabase` on the same file corrupts. Its three rules: never blind-retry an ambiguous submission, `LastLedgerSequence` is the only proof a transaction is dead, and fills come from validated metadata only (`FillParser`), never client-side subtraction. Trade signing is gated to `hasLocalKeys` until the Ledger path exists. Plan: `docs/design/2026-09-06-consolidated-plan.md` §II.A.
+- **Trade:** XRP ⇄ RLUSD only. Pure logic in `lib/domain/trade/` (no `double` — money maths goes through `TradeDecimal`); services in `lib/data/trade/`; `TradeRepository` is the only thing that touches the trade tables. The reconciler runs in the **UI process** (kicked from `LockLifecycle` at unlock and on resume), never in the watcher isolate — a second `AppDatabase` on the same file corrupts. Its three rules: never blind-retry an ambiguous submission, `LastLedgerSequence` is the only proof a transaction is dead, and fills come from validated metadata only (`FillParser`), never client-side subtraction. Signing is local keys **or** Ledger. Plan: `docs/design/2026-09-06-consolidated-plan.md` §I.13.
+- **Escrow:** XRP-only timed escrow (`EscrowService`). Create from wallet detail; list/finish/cancel on Settings → Escrow. Finish only after `FinishAfter` and before `CancelAfter`; cancel only after `CancelAfter`. No background signing. Conditional / token escrow deferred. Plan: `docs/design/2026-09-06-consolidated-plan.md` §I.14.
+- **Batch:** `BatchV1_1` only. Slice 1 is single-account XRP multi-send (2–8 inner Payments, All-or-nothing) from Send, gated on the connected node’s `feature` RPC. Inners are unsigned (`tfInnerBatchTxn`, fee 0). No generic builder; Ledger Batch signing is not exposed yet. Plan: `docs/design/2026-09-06-consolidated-plan.md` §II.B.
 - **Game scores:** local top-5 only (`RunnerScoreboard`); no network.
 
 ---
@@ -166,9 +175,9 @@ When changing key derivation, update golden tests in `test/data/wallet_importer_
 - **Google Play release is the goal**; sideload builds are for development.
   Treat user-facing failure modes, recovery paths and error copy as shippable
   product surface, not developer conveniences.
-- Features in tree: create (entropy ritual), import (mnemonic / family seed / watch-only / encrypted export), send, receive, RLUSD trust line (signing / Ledger), activity, PIN + optional game PIN + biometrics, FGS watcher, unlock-screen Zerpland runner (game PIN or 3-fail decoy when no game PIN; top-5 local leaderboard), XRP/USD portfolio display, connection status chip.
-- Ledger Device checkbox on wallet detail enables Send for watch-only (USB, XRP app, path `m/44'/144'/index'/0/0`); no seed on phone; address mismatch → user error. See `lib/data/ledger_device/`.
-- Non-goals unless asked: DEX, NFTs, multi-sig UX, remote push server, iOS release polish.
+- Features in tree: create (entropy ritual), import (mnemonic / family seed / watch-only / encrypted export), send, receive, RLUSD trust line (signing / Ledger), XRP⇄RLUSD trade (market + limit, software or Ledger), timed XRP escrow (create / finish / cancel), activity, PIN + optional game PIN + biometrics, FGS watcher, unlock-screen Zerpland runner (game PIN or 3-fail decoy when no game PIN; top-5 local leaderboard), XRP/USD portfolio display, connection status chip.
+- Ledger Device checkbox on wallet detail enables Send, trade, and escrow for watch-only (USB, XRP app, path `m/44'/144'/index'/0/0`); no seed on phone; address mismatch → user error. See `lib/data/ledger_device/`.
+- Non-goals unless asked: extra DEX pairs, NFTs, multi-sig UX, remote push server, iOS release polish, arbitrary batch builder / multi-account Batch, conditional/token escrow.
 - Secret-at-rest design (Argon2id PIN envelope, biometrics as convenience only):
   `docs/design/2026-09-06-auth-bound-secret-storage.md`.
 

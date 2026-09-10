@@ -4,6 +4,7 @@ import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/send/send_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/treasure_icon.dart';
 
 /// Opens send, locked to [AppConfig.coffeeAddress], from a signing wallet.
 Future<void> openBuyCoffee(BuildContext context, WidgetRef ref) async {
@@ -45,7 +46,7 @@ Future<void> openBuyCoffee(BuildContext context, WidgetRef ref) async {
               ),
               for (final w in signers)
                 ListTile(
-                  leading: const Icon(Icons.account_balance_wallet_outlined),
+                  leading: TreasureAvatar(account: w, radius: 18),
                   title: Text(w.label),
                   subtitle: Text(w.address),
                   onTap: () => Navigator.of(ctx).pop(w),
@@ -62,10 +63,8 @@ Future<void> openBuyCoffee(BuildContext context, WidgetRef ref) async {
 
   await Navigator.of(context).push<void>(
     MaterialPageRoute(
-      builder: (_) => SendScreen(
-        account: from,
-        presetDestination: AppConfig.coffeeAddress,
-      ),
+      builder: (_) =>
+          SendScreen(account: from, presetDestination: AppConfig.coffeeAddress),
     ),
   );
 }

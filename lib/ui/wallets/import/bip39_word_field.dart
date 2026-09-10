@@ -11,6 +11,7 @@ class Bip39WordField extends StatelessWidget {
     required this.focusNode,
     required this.enabled,
     this.onSubmitted,
+    this.nextFocusNode,
     this.onPasteMultiWord,
   });
 
@@ -21,11 +22,15 @@ class Bip39WordField extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String>? onSubmitted;
 
+  /// After a suggestion tap or keyboard Next, focus this field.
+  final FocusNode? nextFocusNode;
+
   /// When the user pastes multiple words into this field.
   final void Function(List<String> words)? onPasteMultiWord;
 
-  static final List<String> _wordList =
-      List<String>.from(Bip39Languages.english.wordList);
+  static final List<String> _wordList = List<String>.from(
+    Bip39Languages.english.wordList,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +50,9 @@ class Bip39WordField extends StatelessWidget {
           selection: TextSelection.collapsed(offset: selection.length),
         );
         onSubmitted?.call(selection);
+        _focusNext();
       },
-      fieldViewBuilder: (
-        context,
-        textController,
-        focusNode,
-        onFieldSubmitted,
-      ) {
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
         return TextField(
           controller: textController,
           focusNode: focusNode,
@@ -61,9 +62,7 @@ class Bip39WordField extends StatelessWidget {
           textInputAction: TextInputAction.next,
           style: const TextStyle(fontSize: 13),
           inputFormatters: [
-            _MultiWordPasteFormatter(
-              onMultiWord: onPasteMultiWord,
-            ),
+            _MultiWordPasteFormatter(onMultiWord: onPasteMultiWord),
           ],
           decoration: InputDecoration(
             isDense: true,
@@ -82,6 +81,7 @@ class Bip39WordField extends StatelessWidget {
           onSubmitted: (v) {
             onFieldSubmitted();
             onSubmitted?.call(v);
+            _focusNext();
           },
         );
       },
@@ -111,6 +111,18 @@ class Bip39WordField extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _focusNext() {
+    final next = nextFocusNode;
+    if (next == null) return;
+    // Autocomplete re-asserts focus on this field after onSelected; wait
+    // two frames so the next cell actually receives it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (next.canRequestFocus) next.requestFocus();
+      });
+    });
   }
 }
 

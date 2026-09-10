@@ -3,11 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class ReceiveScreen extends StatelessWidget {
-  const ReceiveScreen({
-    super.key,
-    required this.address,
-    required this.label,
-  });
+  const ReceiveScreen({super.key, required this.address, required this.label});
 
   final String address;
   final String label;
@@ -55,9 +51,9 @@ class ReceiveScreen extends StatelessWidget {
               SelectableText(
                 address,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontFamily: 'monospace',
-                      color: colorScheme.onSurface,
-                    ),
+                  fontFamily: 'monospace',
+                  color: colorScheme.onSurface,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),

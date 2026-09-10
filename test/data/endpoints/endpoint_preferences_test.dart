@@ -11,18 +11,32 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('default mainnet endpoints use the maintainer server', () async {
+  test('default mainnet WSS endpoints use public servers', () async {
     final p = EndpointPreferences();
     expect(await p.selectedHttpIds(), EndpointPreferences.defaultHttpIds);
     expect(await p.selectedWssIds(), EndpointPreferences.defaultWssIds);
-    final http = await p.httpUrls(NetworkId.mainnet);
-    expect(http, ['https://rpc.rich-list.info/']);
+    final wss = await p.wssUrls(NetworkId.mainnet);
+    expect(wss, ['wss://xrplcluster.com', 'wss://mainnet.xrpl-rpc.com']);
     expect(
       EndpointPreferences.mainnetHttpCatalog.any((e) => e.id == 'rich-list'),
       isTrue,
     );
-    expect(EndpointPreferences.defaultHttpIds, contains('rich-list'));
-    expect(http, contains('https://rpc.rich-list.info/'));
+    expect(EndpointPreferences.defaultHttpIds, ['cluster', 'ankr']);
+    expect(
+      EndpointPreferences.mainnetWssCatalog.any((e) => e.id == 'rich-list'),
+      isTrue,
+    );
+  });
+
+  test('rich-list WSS catalog carries a token but UI host does not', () {
+    final opt = EndpointPreferences.mainnetWssCatalog.firstWhere(
+      (e) => e.id == 'rich-list',
+    );
+    expect(opt.host, 'wss.rich-list.info');
+    expect(opt.url, startsWith('wss://wss.rich-list.info/'));
+    expect(opt.url, contains('token='));
+    expect(EndpointUrl.hostOf(opt.url), 'wss.rich-list.info');
+    expect(EndpointUrl.hostOf(opt.url), isNot(contains('token')));
   });
 
   test('user can opt into the maintainer RPC explicitly', () async {
@@ -30,6 +44,15 @@ void main() {
     await p.setHttpIds(['rich-list', 'cluster']);
     final urls = await p.httpUrls(NetworkId.mainnet);
     expect(urls, ['https://rpc.rich-list.info/', 'https://xrplcluster.com/']);
+  });
+
+  test('user can opt into maintainer WSS with compiled token', () async {
+    final p = EndpointPreferences();
+    await p.setWssIds(['rich-list', 'cluster']);
+    final urls = await p.wssUrls(NetworkId.mainnet);
+    expect(urls.first, contains('wss://wss.rich-list.info/'));
+    expect(urls.first, contains('token='));
+    expect(urls[1], 'wss://xrplcluster.com');
   });
 
   test('setHttpIds filters and persists order', () async {
@@ -50,7 +73,7 @@ void main() {
       expect(await p.selectedHttpIds(), EndpointPreferences.defaultHttpIds);
       expect(
         await p.httpUrls(NetworkId.mainnet),
-        contains('https://rpc.rich-list.info/'),
+        contains('https://xrplcluster.com/'),
       );
     },
   );
@@ -128,7 +151,8 @@ void main() {
       url: 'https://rpc.example.com/',
     );
     expect(await p.httpUrls(NetworkId.mainnet), [
-      'https://rpc.rich-list.info/',
+      'https://xrplcluster.com/',
+      'https://mainnet.xrpl-rpc.com/',
       'https://rpc.example.com/',
     ]);
   });
@@ -143,7 +167,11 @@ void main() {
       url: 'https://rpc.example.com/',
     );
     final urls = await p.httpUrls(NetworkId.mainnet);
-    expect(urls, ['https://rpc.rich-list.info/', 'https://rpc.example.com/']);
+    expect(urls, [
+      'https://xrplcluster.com/',
+      'https://mainnet.xrpl-rpc.com/',
+      'https://rpc.example.com/',
+    ]);
   });
 
   test('addCustom rejects http://', () async {
@@ -174,7 +202,8 @@ void main() {
     );
     await p.moveCustom(id: 'b', kind: EndpointKind.wss, delta: -1);
     expect(await p.wssUrls(NetworkId.mainnet), [
-      'wss://wss.rich-list.info',
+      'wss://xrplcluster.com',
+      'wss://mainnet.xrpl-rpc.com',
       'wss://b.example.com',
       'wss://a.example.com',
     ]);

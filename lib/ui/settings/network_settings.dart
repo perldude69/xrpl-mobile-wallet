@@ -58,17 +58,14 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
     if (_busy) return;
     final next = List<String>.from(_httpIds);
     if (enabled) {
-      if (!next.contains(id)) {
-        next.clear();
-        for (final opt in EndpointPreferences.mainnetHttpCatalog) {
-          if (_httpIds.contains(opt.id) || opt.id == id) next.add(opt.id);
-        }
-      }
+      if (!next.contains(id)) next.add(id);
     } else {
       if (next.length <= 1) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Keep at least one RPC server selected')),
+          const SnackBar(
+            content: Text('Keep at least one RPC server selected'),
+          ),
         );
         return;
       }
@@ -79,7 +76,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
       _httpIds = next;
     });
     try {
-      await ref.read(networkControllerProvider.notifier).setHttpEndpointIds(next);
+      await ref
+          .read(networkControllerProvider.notifier)
+          .setHttpEndpointIds(next);
       if (!mounted) return;
       final host = ref.read(networkControllerProvider).activeNodeHost;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,9 +92,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update RPC: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update RPC: $e')));
         await _loadEndpointPrefs();
       }
     } finally {
@@ -107,17 +106,14 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
     if (_busy) return;
     final next = List<String>.from(_wssIds);
     if (enabled) {
-      if (!next.contains(id)) {
-        next.clear();
-        for (final opt in EndpointPreferences.mainnetWssCatalog) {
-          if (_wssIds.contains(opt.id) || opt.id == id) next.add(opt.id);
-        }
-      }
+      if (!next.contains(id)) next.add(id);
     } else {
       if (next.length <= 1) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Keep at least one WSS server selected')),
+          const SnackBar(
+            content: Text('Keep at least one WSS server selected'),
+          ),
         );
         return;
       }
@@ -128,21 +124,111 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
       _wssIds = next;
     });
     try {
-      await ref.read(networkControllerProvider.notifier).setWssEndpointIds(next);
+      await ref
+          .read(networkControllerProvider.notifier)
+          .setWssEndpointIds(next);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Watcher WSS servers updated')),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update WSS: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update WSS: $e')));
         await _loadEndpointPrefs();
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _reorderBuiltInEndpoint({
+    required EndpointKind kind,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final ids = List<String>.from(
+      kind == EndpointKind.http ? _httpIds : _wssIds,
+    );
+    final id = ids.removeAt(oldIndex);
+    ids.insert(newIndex, id);
+    setState(() {
+      if (kind == EndpointKind.http) {
+        _httpIds = ids;
+      } else {
+        _wssIds = ids;
+      }
+      _busy = true;
+    });
+    try {
+      if (kind == EndpointKind.http) {
+        await ref
+            .read(networkControllerProvider.notifier)
+            .setHttpEndpointIds(ids);
+      } else {
+        await ref
+            .read(networkControllerProvider.notifier)
+            .setWssEndpointIds(ids);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _builtInEndpointList({
+    required EndpointKind kind,
+    required List<String> selectedIds,
+    required List<EndpointOption> catalog,
+    required ThemeData theme,
+  }) {
+    final byId = {for (final option in catalog) option.id: option};
+    final ordered = <EndpointOption>[
+      for (final id in selectedIds)
+        if (byId[id] != null) byId[id]!,
+      for (final option in catalog)
+        if (!selectedIds.contains(option.id)) option,
+    ];
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: true,
+      itemCount: ordered.length,
+      onReorderItem: (oldIndex, newIndex) {
+        if (oldIndex >= selectedIds.length || newIndex > selectedIds.length) {
+          return;
+        }
+        _reorderBuiltInEndpoint(
+          kind: kind,
+          oldIndex: oldIndex,
+          newIndex: newIndex.clamp(0, selectedIds.length),
+        );
+      },
+      itemBuilder: (context, index) {
+        final option = ordered[index];
+        final selected = selectedIds.contains(option.id);
+        return CheckboxListTile(
+          key: ValueKey('${kind.name}-${option.id}'),
+          value: selected,
+          title: Text(option.label),
+          subtitle: Text(option.host),
+          secondary: selected
+              ? Text(
+                  '#${selectedIds.indexOf(option.id) + 1}',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              : null,
+          enabled: !_busy,
+          onChanged: _busy
+              ? null
+              : (value) => kind == EndpointKind.http
+                    ? _toggleHttpEndpoint(option.id, value ?? false)
+                    : _toggleWssEndpoint(option.id, value ?? false),
+        );
+      },
+    );
   }
 
   Future<void> _addCustomEndpoint(EndpointKind kind) async {
@@ -154,17 +240,15 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref.read(networkControllerProvider.notifier).addCustomEndpoint(
-            label: draft.label,
-            kind: kind,
-            url: draft.url,
-          );
+      await ref
+          .read(networkControllerProvider.notifier)
+          .addCustomEndpoint(label: draft.label, kind: kind, url: draft.url);
       await _loadEndpointPrefs();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -184,7 +268,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref.read(networkControllerProvider.notifier).updateCustomEndpoint(
+      await ref
+          .read(networkControllerProvider.notifier)
+          .updateCustomEndpoint(
             CustomEndpoint(
               id: endpoint.id,
               label: draft.label,
@@ -195,9 +281,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
       await _loadEndpointPrefs();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -221,10 +307,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await ref.read(networkControllerProvider.notifier).moveCustomEndpoint(
-            endpoint: endpoint,
-            delta: delta,
-          );
+      await ref
+          .read(networkControllerProvider.notifier)
+          .moveCustomEndpoint(endpoint: endpoint, delta: delta);
       await _loadEndpointPrefs();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -243,7 +328,9 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
             'None yet. Add a private HTTPS/WSS node; it stays on this device.',
-            style: textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+            style: textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
           ),
         ),
       ];
@@ -308,14 +395,8 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SegmentedButton<NetworkId>(
             segments: const [
-              ButtonSegment(
-                value: NetworkId.mainnet,
-                label: Text('Mainnet'),
-              ),
-              ButtonSegment(
-                value: NetworkId.testnet,
-                label: Text('Testnet'),
-              ),
+              ButtonSegment(value: NetworkId.mainnet, label: Text('Mainnet')),
+              ButtonSegment(value: NetworkId.testnet, label: Text('Testnet')),
             ],
             selected: {networkState.network},
             onSelectionChanged: _busy
@@ -346,26 +427,12 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
               style: hintStyle,
             ),
           ),
-          ...EndpointPreferences.mainnetHttpCatalog.map((opt) {
-            final selected = _httpIds.contains(opt.id);
-            return CheckboxListTile(
-              value: selected,
-              title: Text(opt.label),
-              subtitle: Text(opt.host),
-              secondary: selected
-                  ? Text(
-                      '#${_httpIds.indexOf(opt.id) + 1}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
-                  : null,
-              enabled: !_busy,
-              onChanged: _busy
-                  ? null
-                  : (v) => _toggleHttpEndpoint(opt.id, v ?? false),
-            );
-          }),
+          _builtInEndpointList(
+            kind: EndpointKind.http,
+            selectedIds: _httpIds,
+            catalog: EndpointPreferences.mainnetHttpCatalog,
+            theme: theme,
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text('Custom RPC servers', style: sectionStyle),
@@ -392,26 +459,12 @@ class _NetworkSettingsState extends ConsumerState<NetworkSettings> {
               style: hintStyle,
             ),
           ),
-          ...EndpointPreferences.mainnetWssCatalog.map((opt) {
-            final selected = _wssIds.contains(opt.id);
-            return CheckboxListTile(
-              value: selected,
-              title: Text(opt.label),
-              subtitle: Text(opt.host),
-              secondary: selected
-                  ? Text(
-                      '#${_wssIds.indexOf(opt.id) + 1}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
-                  : null,
-              enabled: !_busy,
-              onChanged: _busy
-                  ? null
-                  : (v) => _toggleWssEndpoint(opt.id, v ?? false),
-            );
-          }),
+          _builtInEndpointList(
+            kind: EndpointKind.wss,
+            selectedIds: _wssIds,
+            catalog: EndpointPreferences.mainnetWssCatalog,
+            theme: theme,
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text('Custom watcher servers', style: sectionStyle),

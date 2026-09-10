@@ -1,0 +1,20 @@
+name: widgetbook_workspace
+description: Local layout sandbox for XRPL Mobile Wallet. Not shipped in the Play APK.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  widgetbook: ^3.20.0
+  xrpl_mobile_wallet:
+    path: ..
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

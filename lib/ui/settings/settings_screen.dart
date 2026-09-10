@@ -3,19 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xrpl_mobile_wallet/config/app_config.dart';
 import 'package:xrpl_mobile_wallet/config/app_exit.dart';
-import 'package:xrpl_mobile_wallet/data/watcher/account_watcher.dart';
 import 'package:xrpl_mobile_wallet/state/activity_controller.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
-import 'package:xrpl_mobile_wallet/ui/settings/backup_settings.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/buy_coffee.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/network_settings.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/security_settings.dart';
-import 'package:xrpl_mobile_wallet/ui/settings/settings_styles.dart';
-import 'package:xrpl_mobile_wallet/ui/wallets/create/create_wallet_screen.dart';
-import 'package:xrpl_mobile_wallet/ui/wallets/import/import_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/escrow_settings.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/monitoring_settings.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/settings_category_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/settings/wallet_settings.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -25,10 +25,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool? _watcherEnabled;
-  bool _watcherRunning = false;
-  bool _busy = false;
-
   @override
   void initState() {
     super.initState();
@@ -39,28 +35,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _refreshWatcherState() async {
     await ref.read(walletListControllerProvider.notifier).reload();
-    final watcher = ref.read(accountWatcherProvider);
-    final enabled = await watcher.isEnabled();
-    final running = await watcher.isRunning();
     if (!mounted) return;
-    setState(() {
-      _watcherEnabled = enabled;
-      _watcherRunning = running;
-    });
-  }
-
-  Future<void> _setWatcherEnabled(bool value) async {
-    setState(() => _busy = true);
-    try {
-      final watcher = ref.read(accountWatcherProvider);
-      await watcher.setEnabled(value);
-      final wallets = ref.read(walletListControllerProvider).wallets;
-      final network = ref.read(networkControllerProvider).network;
-      await watcher.syncAddressBook(wallets, network);
-      await _refreshWatcherState();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Future<void> _confirmExitApp() async {
@@ -154,10 +129,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _wipeAll() async {
-    setState(() => _busy = true);
     try {
-      final watcher = ref.read(accountWatcherProvider);
-      await watcher.wipeLocalState();
+      await ref.read(accountWatcherProvider).wipeLocalState();
 
       final db = ref.read(databaseProvider);
       await db.wipeAll();
@@ -178,154 +151,126 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Wipe failed: $e')));
       }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    } finally {}
   }
 
   @override
   Widget build(BuildContext context) {
-    final wallets = ref.watch(walletListControllerProvider).wallets;
-    final enabled = _watcherEnabled ?? true;
-    final theme = Theme.of(context);
-    final hintStyle = settingsHintStyle(context);
-    final sectionStyle = settingsSectionStyle(context);
-
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        NetworkSettings(onNetworkChanged: _refreshWatcherState),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('Watcher', style: sectionStyle),
-        ),
-        SwitchListTile(
-          title: const Text('Background watcher'),
-          subtitle: Text(
-            enabled
-                ? (_watcherRunning
-                      ? 'Running · ${wallets.length} account(s)'
-                      : wallets.isEmpty
-                      ? 'Enabled · add a wallet to start'
-                      : 'Enabled · starting…')
-                : 'Disabled',
-          ),
-          value: enabled,
-          onChanged: _busy ? null : _setWatcherEnabled,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Text(
-            'Watches public addresses only (no private keys in the service). '
-            'Uses an Android foreground notification while connected.\n\n'
-            'Tip: disable battery optimization for this app if the watcher '
-            'stops after the app is swiped away.',
-            style: hintStyle,
+        _category(
+          context,
+          PirateGlyph.spyglass,
+          'Network',
+          'RPC and WSS priority',
+          SettingsCategoryScreen(
+            title: 'Network',
+            child: NetworkSettings(onNetworkChanged: _refreshWatcherState),
           ),
         ),
-        if (!AccountWatcher.isSupportedPlatform)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
-              'Foreground watcher runs on Android/iOS only. '
-              'Desktop builds keep the address book in sync but do not start a service.',
-              style: hintStyle,
-            ),
+        _category(
+          context,
+          PirateGlyph.captain,
+          'Wallet',
+          'Create, import, and backup wallets',
+          const SettingsCategoryScreen(
+            title: 'Wallet',
+            child: WalletSettings(),
           ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('Wallets', style: sectionStyle),
+        ),
+        _category(
+          context,
+          PirateGlyph.sword,
+          'Security',
+          'PIN, biometrics, and auto-lock',
+          const SettingsCategoryScreen(
+            title: 'Security',
+            child: SecuritySettings(),
+          ),
+        ),
+        _category(
+          context,
+          PirateGlyph.cannon,
+          'Monitoring',
+          'Background watcher and notifications',
+          const SettingsCategoryScreen(
+            title: 'Monitoring',
+            child: MonitoringSettings(),
+          ),
+        ),
+        _category(
+          context,
+          PirateGlyph.shovel,
+          'Escrow',
+          'View and finish escrow payments',
+          const SettingsCategoryScreen(
+            title: 'Escrow',
+            child: EscrowSettings(),
+          ),
+        ),
+        _category(
+          context,
+          PirateGlyph.parrot,
+          'About',
+          'Version, support, and app information',
+          _aboutScreen(context),
         ),
         ListTile(
-          leading: const Icon(Icons.add_circle_outline),
-          title: const Text('Create wallet'),
-          subtitle: const Text(
-            'New 24-word BIP39 recovery phrase · write it down offline',
-          ),
-          enabled: !_busy,
-          onTap: _busy
-              ? null
-              : () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CreateWalletScreen(),
-                    ),
-                  );
-                },
+          leading: const PirateIcon(glyph: PirateGlyph.plank),
+          title: const Text('Exit'),
+          subtitle: const Text('Close Zerp Wallet completely'),
+          onTap: _confirmExitApp,
         ),
         ListTile(
-          leading: const Icon(Icons.download_outlined),
-          title: const Text('Import wallet'),
-          subtitle: const Text(
-            'Mnemonic, family seed, or watch-only classic address',
+          leading: PirateIcon(
+            glyph: PirateGlyph.skull,
+            color: Theme.of(context).colorScheme.error,
           ),
-          enabled: !_busy,
-          onTap: _busy
-              ? null
-              : () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ImportScreen()),
-                  );
-                },
-        ),
-        const BackupSettings(),
-        const Divider(),
-        const SecuritySettings(),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('Danger zone', style: sectionStyle),
-        ),
-        ListTile(
-          leading: Icon(Icons.delete_forever, color: theme.colorScheme.error),
           title: Text(
             'Wipe all local data',
-            style: TextStyle(color: theme.colorScheme.error),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-          subtitle: const Text(
-            'Deletes wallets, secrets, cache, and PIN from this device',
-          ),
-          enabled: !_busy,
-          onTap: _busy ? null : _confirmWipe,
+          subtitle: const Text('Danger zone · deletes wallets and secrets'),
+          onTap: _confirmWipe,
         ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('About', style: sectionStyle),
-        ),
-        ListTile(
-          title: const Text('Zerp Wallet'),
-          subtitle: const Text(
-            'Android wallet manager for the XRP Ledger\n'
-            'Version ${AppConfig.appVersionName} · Create or import BIP39 wallets',
-          ),
-          isThreeLine: true,
-          trailing: IconButton(
-            tooltip: 'Buy the developer a coffee',
-            icon: const Icon(Icons.coffee),
-            onPressed: _busy ? null : () => openBuyCoffee(context, ref),
-          ),
-        ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('App', style: sectionStyle),
-        ),
-        ListTile(
-          leading: const Icon(Icons.power_settings_new),
-          title: const Text('Exit app'),
-          subtitle: const Text('Close Zerp Wallet completely'),
-          enabled: !_busy,
-          onTap: _busy ? null : _confirmExitApp,
-        ),
-        if (_busy)
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
       ],
     );
   }
+
+  Widget _category(
+    BuildContext context,
+    PirateGlyph glyph,
+    String title,
+    String subtitle,
+    Widget screen,
+  ) => ListTile(
+    leading: PirateIcon(glyph: glyph),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen)),
+  );
+
+  Widget _aboutScreen(BuildContext context) => SettingsCategoryScreen(
+    title: 'About',
+    child: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ListTile(
+          leading: const PirateIcon(glyph: PirateGlyph.parrot),
+          title: const Text('Zerp Wallet'),
+          subtitle: Text(
+            'Version ${AppConfig.appVersionName}\nAndroid wallet for the XRP Ledger',
+          ),
+          isThreeLine: true,
+          trailing: IconButton(
+            icon: const PirateIcon(glyph: PirateGlyph.grog),
+            onPressed: () => openBuyCoffee(context, ref),
+          ),
+        ),
+      ],
+    ),
+  );
 }

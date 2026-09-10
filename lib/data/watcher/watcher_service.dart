@@ -270,6 +270,9 @@ class _WatcherRunner {
       event: event,
       book: _book,
     );
+    final prefs = await SharedPreferences.getInstance();
+    final hideAmounts =
+        prefs.getBool('watcher_hide_notification_amounts') ?? false;
 
     _activityNotificationId = (_activityNotificationId + 1).clamp(
       1000,
@@ -278,7 +281,7 @@ class _WatcherRunner {
     await notifications.show(
       id: _activityNotificationId,
       title: copy.title,
-      body: copy.body,
+      body: hideAmounts ? 'Validated ledger activity detected.' : copy.body,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           AppConfig.walletActivityChannelId,

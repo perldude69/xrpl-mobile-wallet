@@ -4,6 +4,7 @@ import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/state/lock_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/pin/pin_text_field.dart';
 import 'package:xrpl_mobile_wallet/ui/lock/runner/zerpland_runner_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_marks.dart';
 
 class UnlockScreen extends ConsumerStatefulWidget {
   const UnlockScreen({super.key});
@@ -129,13 +130,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Unlock')),
+      appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 10),
+          child: JollyRogerMark(size: 36),
+        ),
+        leadingWidth: 48,
+        title: const Text('Unlock'),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Center(child: PirateMascot(size: 112)),
+              const SizedBox(height: 16),
               Text(
                 'Enter your PIN to unlock',
                 style: Theme.of(context).textTheme.titleMedium,

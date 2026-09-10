@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:blockchain_utils/exception/exceptions.dart';
 import 'package:http/http.dart' as http;
 import 'package:xrpl_dart/xrpl_dart.dart';
@@ -8,6 +9,7 @@ import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rpc_http_client.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rich_list_book_offers_request.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/rich_list_account_offers_request.dart';
+import 'package:xrpl_mobile_wallet/domain/payments/batch_plan.dart';
 
 /// A single balance entry (native XRP or issued IOU).
 class LedgerBalance {
@@ -236,6 +238,53 @@ class XrplRpcClient {
       throw StateError('XrplRpcClient is not connected. Call connect() first.');
     }
     return rpc;
+  }
+
+  /// Raw validated JSON-RPC for ledger object methods not modelled by xrpl_dart.
+  Future<Map<String, dynamic>> requestJson(
+    String method,
+    Map<String, dynamic> params,
+  ) async {
+    final client = _httpClient;
+    final url = _activeHttpUrl;
+    if (client == null || url == null) throw StateError('RPC is not connected');
+    final response = await client.post(
+      Uri.parse(url),
+      headers: const {'content-type': 'application/json'},
+      body: jsonEncode({
+        'method': method,
+        'params': [params],
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        body['status'] == 'error') {
+      throw StateError('Ledger request failed');
+    }
+    return Map<String, dynamic>.from(body['result'] as Map);
+  }
+
+  /// Whether the connected node has enabled [BatchAmendment.name] (BatchV1_1).
+  ///
+  /// False on RPC errors so the UI stays hidden rather than offering a submit
+  /// that the ledger will reject with `temDISABLED`.
+  Future<bool> batchAmendmentEnabled() async {
+    try {
+      final result = await requestJson('feature', const {});
+      if (BatchAmendment.isEnabled(result)) return true;
+      final named = result[BatchAmendment.name];
+      if (named is Map && named['enabled'] == true) return true;
+    } catch (_) {}
+    try {
+      final result = await requestJson('feature', {
+        'feature': BatchAmendment.name,
+      });
+      if (result['enabled'] == true) return true;
+      return BatchAmendment.isEnabled(result);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Minimum open-ledger fee in drops (same [XrplFeeType.minimum] autoFill uses).

@@ -8,6 +8,7 @@ import 'package:xrpl_mobile_wallet/data/wallet/wallet_generator.dart';
 import 'package:xrpl_mobile_wallet/state/network_controller.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/create/dice_entropy_pad.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 enum _CreateStep { label, dice, word, reveal, quiz }
@@ -344,7 +345,7 @@ class _CreateWalletScreenState extends ConsumerState<CreateWalletScreen> {
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _busy ? null : _goToDice,
-                icon: const Icon(Icons.casino_outlined),
+                icon: const PirateIcon(glyph: PirateGlyph.dice),
                 label: const Text('Continue to entropy ritual'),
               ),
             ],

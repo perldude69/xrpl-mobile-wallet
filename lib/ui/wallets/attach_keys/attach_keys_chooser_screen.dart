@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/attach_keys/attach_keys_entry_screen.dart';
 
 /// Chooser: how to enter secrets for upgrading a watch-only wallet.
@@ -45,9 +46,7 @@ class AttachKeysChooserScreen extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             address,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontFamily: 'monospace',
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
           const SizedBox(height: 8),
           Text(
@@ -57,21 +56,21 @@ class AttachKeysChooserScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           _OptionTile(
-            icon: Icons.content_paste,
+            glyph: PirateGlyph.quill,
             title: 'Paste recovery phrase',
             subtitle: '12 or 24 words from clipboard or typed as one phrase',
             onTap: () => _open(context, AttachKeysMode.pasteMnemonic),
           ),
           const SizedBox(height: 12),
           _OptionTile(
-            icon: Icons.grid_on,
+            glyph: PirateGlyph.map,
             title: 'Enter phrase (grid)',
             subtitle: '24 numbered fields · 8×3 with BIP39 autocomplete',
             onTap: () => _open(context, AttachKeysMode.gridMnemonic),
           ),
           const SizedBox(height: 12),
           _OptionTile(
-            icon: Icons.key,
+            glyph: PirateGlyph.key,
             title: 'Family seed',
             subtitle: 'Classic XRPL seed starting with s…',
             onTap: () => _open(context, AttachKeysMode.familySeed),
@@ -84,13 +83,13 @@ class AttachKeysChooserScreen extends StatelessWidget {
 
 class _OptionTile extends StatelessWidget {
   const _OptionTile({
-    required this.icon,
+    required this.glyph,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  final IconData icon;
+  final PirateGlyph glyph;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -99,7 +98,7 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: Icon(icon),
+        leading: PirateIcon(glyph: glyph),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),

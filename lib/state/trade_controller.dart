@@ -67,6 +67,7 @@ class TradeState {
     this.loading = true,
     this.busy = false,
     this.loadError,
+    this.fills = const {},
   });
 
   final List<OpenOffer> offers;
@@ -83,8 +84,12 @@ class TradeState {
   final bool busy;
 
   final Object? loadError;
+  final Map<String, List<TradeFill>> fills;
 
   bool get isWorking => loading || busy;
+
+  List<OpenOffer> get unfundedOffers =>
+      offers.where((offer) => !offer.isFunded).toList();
 
   TradeState copyWith({
     List<OpenOffer>? offers,
@@ -94,6 +99,7 @@ class TradeState {
     bool? busy,
     Object? loadError,
     bool clearLoadError = false,
+    Map<String, List<TradeFill>>? fills,
   }) => TradeState(
     offers: offers ?? this.offers,
     active: active ?? this.active,
@@ -101,6 +107,7 @@ class TradeState {
     loading: loading ?? this.loading,
     busy: busy ?? this.busy,
     loadError: clearLoadError ? null : (loadError ?? this.loadError),
+    fills: fills ?? this.fills,
   );
 }
 
@@ -145,9 +152,9 @@ class TradeController extends StateNotifier<TradeState> {
   TradePair get pair => TradePair.forNetwork(_network);
 
   /// Issued asset the order form should preselect: RLUSD when the wallet
-  /// already holds a line for it, otherwise nothing. Trading is heading for
-  /// this one pair (Part II §A), so it is the sensible default rather than
-  /// whichever token happens to sort first.
+  /// already holds a line for it, otherwise nothing. Trading is this one pair
+  /// (XRP ⇄ RLUSD), so it is the sensible default rather than whichever token
+  /// happens to sort first.
   TradeAsset? get preferredQuote {
     final rlusd = pair.quote;
     for (final balance in _balances ?? const <LedgerBalance>[]) {
@@ -176,6 +183,9 @@ class TradeController extends StateNotifier<TradeState> {
           .fetchAccountOffers(_account.address)
           .timeout(const Duration(seconds: 12));
       final rows = await _repository.executionsForWallet(_account.id);
+      final fills = <String, List<TradeFill>>{
+        for (final row in rows) row.id: await _repository.fills(row.id),
+      };
       if (!mounted) return;
       state = state.copyWith(
         offers: _decorate(offers, rows),
@@ -188,6 +198,7 @@ class TradeController extends StateNotifier<TradeState> {
             if (TradeStatus.fromStorage(row.status).isTerminal) row,
         ],
         loading: false,
+        fills: fills,
       );
     } catch (e) {
       if (!mounted) return;
@@ -204,6 +215,8 @@ class TradeController extends StateNotifier<TradeState> {
     required String secret,
     required TakerAmounts amounts,
     required TradeSide side,
+    bool sellAll = false,
+    DateTime? expiration,
     String? expectedFeeDrops,
   }) async {
     final executionId = const Uuid().v4();
@@ -229,6 +242,8 @@ class TradeController extends StateNotifier<TradeState> {
         account: _account.address,
         rpc: _client.requireProvider(),
         amounts: amounts,
+        flags: sellAll ? [OfferCreateFlag.tfSell.value] : const [],
+        expiration: expiration,
         expectedFeeDrops: expectedFeeDrops,
       );
 
@@ -408,6 +423,8 @@ class TradeController extends StateNotifier<TradeState> {
     required Future<String> Function(List<int> txBlob) signTransactionBlob,
     required TakerAmounts amounts,
     required TradeSide side,
+    bool sellAll = false,
+    DateTime? expiration,
     String? expectedFeeDrops,
   }) async {
     final executionId = const Uuid().v4();
@@ -429,6 +446,8 @@ class TradeController extends StateNotifier<TradeState> {
         publicKeyHex: publicKeyHex,
         signTransactionBlob: signTransactionBlob,
         amounts: amounts,
+        flags: sellAll ? [OfferCreateFlag.tfSell.value] : const [],
+        expiration: expiration,
         expectedFeeDrops: expectedFeeDrops,
       );
       if (result.isSuccess) {
@@ -507,41 +526,46 @@ class TradeController extends StateNotifier<TradeState> {
     ];
   }
 
-  /// True when the account still holds at least the offer's `TakerGets`.
-  ///
-  /// Uses the balances the wallet list already loaded rather than a fresh
-  /// request; an unknown balance is reported as funded so a slow refresh never
-  /// shows a healthy offer as broken.
-  bool _isFunded(AccountOffer offer) {
-    final json = offer.takerGets.toJson();
-    final String currency;
-    final String? issuer;
-    final TradeDecimal required;
-    if (json is Map) {
-      currency = json['currency']?.toString() ?? '';
-      issuer = json['issuer']?.toString();
-      final value = TradeDecimal.tryParse(json['value']?.toString());
-      if (value == null) return true;
-      required = value;
-    } else {
-      currency = 'XRP';
-      issuer = null;
-      final drops = TradeDecimal.tryParse(json.toString());
-      if (drops == null) return true;
-      required = TradeDecimal.fromUnscaled(drops.unscaled, TradeAsset.xrpScale);
-    }
+  bool _isFunded(AccountOffer offer) =>
+      takerGetsIsFunded(offer.takerGets.toJson(), balances: _balances);
+}
 
-    final balances = _balances;
-    if (balances == null) return true;
-    for (final balance in balances) {
-      final sameIssuer = (balance.issuer ?? '') == (issuer ?? '');
-      if (balance.currency != currency || !sameIssuer) continue;
-      final held = TradeDecimal.tryParse(balance.value);
-      if (held == null) return true;
-      return held >= required;
-    }
-    return true;
+/// True when [balances] still cover an offer's `TakerGets`.
+///
+/// Unknown or missing balances are treated as funded so a slow refresh never
+/// flags a healthy offer as broken. The ledger does **not** cancel offers that
+/// become unfunded later — they linger, skip fills, and hold owner reserve
+/// until `OfferCancel`.
+bool takerGetsIsFunded(
+  Object? takerGetsJson, {
+  required List<LedgerBalance>? balances,
+}) {
+  final String currency;
+  final String? issuer;
+  final TradeDecimal required;
+  if (takerGetsJson is Map) {
+    currency = takerGetsJson['currency']?.toString() ?? '';
+    issuer = takerGetsJson['issuer']?.toString();
+    final value = TradeDecimal.tryParse(takerGetsJson['value']?.toString());
+    if (value == null) return true;
+    required = value;
+  } else {
+    currency = 'XRP';
+    issuer = null;
+    final drops = TradeDecimal.tryParse(takerGetsJson.toString());
+    if (drops == null) return true;
+    required = TradeDecimal.fromUnscaled(drops.unscaled, TradeAsset.xrpScale);
   }
+
+  if (balances == null) return true;
+  for (final balance in balances) {
+    final sameIssuer = (balance.issuer ?? '') == (issuer ?? '');
+    if (balance.currency != currency || !sameIssuer) continue;
+    final held = TradeDecimal.tryParse(balance.value);
+    if (held == null) return true;
+    return held >= required;
+  }
+  return true;
 }
 
 /// The parts of a submission result the UI is allowed to see.

@@ -244,6 +244,8 @@ class PaymentService {
   /// given, autoFill must land on that same figure or signing is refused —
   /// otherwise a fee spike between review and signature is paid silently.
   Future<PaymentSubmitResult> signAndSubmitTransaction({
+    String? walletId,
+    String network = 'unknown',
     required String secret,
     required String fromAddress,
     required XRPProvider rpc,
@@ -251,6 +253,8 @@ class PaymentService {
     String? expectedFeeDrops,
   }) {
     return _signAndSubmit(
+      walletId: walletId,
+      network: network,
       secret: secret,
       fromAddress: fromAddress,
       rpc: rpc,
@@ -372,6 +376,131 @@ class PaymentService {
         signer: XRPLSignature.signer(pubHex),
       ),
     );
+  }
+
+  Future<PaymentSubmitResult> createXrpEscrow({
+    required String walletId,
+    required String network,
+    required String secret,
+    required String fromAddress,
+    required String destination,
+    required String amountXrp,
+    required DateTime finishAfter,
+    required DateTime cancelAfter,
+    required XRPProvider rpc,
+    String? expectedFeeDrops,
+    int? destinationTag,
+  }) async {
+    final error = validateEscrowTimes(finishAfter, cancelAfter);
+    if (error != null) throw ArgumentError(error);
+    final amountError = PaymentValidators.validateXrpAmount(amountXrp);
+    if (amountError != null) throw ArgumentError(amountError);
+    return _signAndSubmit(
+      walletId: walletId,
+      network: network,
+      secret: secret,
+      fromAddress: fromAddress,
+      rpc: rpc,
+      expectedFeeDrops: expectedFeeDrops,
+      build: (pubHex) => EscrowCreate(
+        account: fromAddress,
+        amount: XRPAmount(XRPHelper.xrpToDrop(amountXrp.trim())),
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        finishAfterTime: finishAfter.toUtc(),
+        cancelAfterTime: cancelAfter.toUtc(),
+        signer: XRPLSignature.signer(pubHex),
+      ),
+    );
+  }
+
+  Future<PaymentSubmitResult> createXrpEscrowWithLedger({
+    required String walletId,
+    required String network,
+    required String fromAddress,
+    required String destination,
+    required String amountXrp,
+    required DateTime finishAfter,
+    required DateTime cancelAfter,
+    required XRPProvider rpc,
+    required String publicKeyHex,
+    required Future<String> Function(List<int> txBlob) signTransactionBlob,
+    String? expectedFeeDrops,
+    int? destinationTag,
+  }) async {
+    final error = validateEscrowTimes(finishAfter, cancelAfter);
+    if (error != null) throw ArgumentError(error);
+    final amountError = PaymentValidators.validateXrpAmount(amountXrp);
+    if (amountError != null) throw ArgumentError(amountError);
+    return signAndSubmitWithLedgerKeys(
+      walletId: walletId,
+      network: network,
+      fromAddress: fromAddress,
+      rpc: rpc,
+      publicKeyHex: publicKeyHex,
+      signTransactionBlob: signTransactionBlob,
+      expectedFeeDrops: expectedFeeDrops,
+      build: (pubHex) => EscrowCreate(
+        account: fromAddress,
+        amount: XRPAmount(XRPHelper.xrpToDrop(amountXrp.trim())),
+        destination: destination.trim(),
+        destinationTag: destinationTag,
+        finishAfterTime: finishAfter.toUtc(),
+        cancelAfterTime: cancelAfter.toUtc(),
+        signer: XRPLSignature.signer(pubHex),
+      ),
+    );
+  }
+
+  static String? validateEscrowTimes(
+    DateTime finishAfter,
+    DateTime cancelAfter,
+  ) {
+    if (!finishAfter.isUtc || !cancelAfter.isUtc) {
+      return 'Escrow times must include a UTC offset';
+    }
+    if (!finishAfter.isAfter(DateTime.now().toUtc())) {
+      return 'FinishAfter must be in the future';
+    }
+    if (!cancelAfter.isAfter(finishAfter)) {
+      return 'CancelAfter must be after FinishAfter';
+    }
+    return null;
+  }
+
+  /// Amount + fee + extra owner-reserve increment must fit in spendable XRP.
+  static String? validateEscrowCreateSpendable({
+    required String amountXrp,
+    required BigInt balanceDrops,
+    required BigInt currentReserveDrops,
+    required BigInt reserveIncrementDrops,
+    required String feeDrops,
+    required bool destUnfunded,
+    BigInt? accountReserveDrops,
+  }) {
+    final amountErr = PaymentValidators.validateXrpAmount(amountXrp);
+    if (amountErr != null) return amountErr;
+    final feeErr = PaymentValidators.validateFeeDrops(feeDrops);
+    if (feeErr != null) return feeErr;
+    final amount = BigInt.parse(XrpAmount.xrpToDrops(amountXrp.trim()));
+    final fee = BigInt.parse(feeDrops.trim());
+    final spendable = balanceDrops - currentReserveDrops;
+    if (spendable < BigInt.zero) {
+      return 'Account is below its XRP reserve';
+    }
+    if (amount + fee + reserveIncrementDrops > spendable) {
+      return 'Amount plus network fee and extra owner reserve exceeds spendable XRP';
+    }
+    if (destUnfunded) {
+      final reserve =
+          accountReserveDrops ??
+          BigInt.from(AppConfig.accountCreateReserveDrops);
+      if (amount < reserve) {
+        return 'Unfunded destination needs at least '
+            '${XrpAmount.dropsToXrp(reserve.toString())} XRP';
+      }
+    }
+    return null;
   }
 
   Future<PaymentSubmitResult> sendIou({

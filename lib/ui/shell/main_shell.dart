@@ -5,6 +5,8 @@ import 'package:xrpl_mobile_wallet/ui/activity/activity_screen.dart';
 import 'package:xrpl_mobile_wallet/ui/network/connection_status_chip.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/buy_coffee.dart';
 import 'package:xrpl_mobile_wallet/ui/settings/settings_screen.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_marks.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/list/wallet_list_screen.dart';
 
 class MainShell extends ConsumerWidget {
@@ -18,12 +20,17 @@ class MainShell extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 10),
+          child: JollyRogerMark(size: 36),
+        ),
+        leadingWidth: 48,
         title: Text(_titles[index]),
         actions: [
           if (index == 2)
             IconButton(
               tooltip: 'Buy the developer a coffee',
-              icon: const Icon(Icons.coffee),
+              icon: const PirateIcon(glyph: PirateGlyph.grog),
               onPressed: () => openBuyCoffee(context, ref),
             ),
           const ConnectionStatusChip(),
@@ -44,17 +51,18 @@ class MainShell extends ConsumerWidget {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
+            icon: PirateIcon(glyph: PirateGlyph.ship),
+            selectedIcon: PirateIcon(glyph: PirateGlyph.ship, size: 26),
             label: 'Wallets',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history),
+            icon: PirateIcon(glyph: PirateGlyph.scroll),
+            selectedIcon: PirateIcon(glyph: PirateGlyph.scroll, size: 26),
             label: 'Activity',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
+            icon: PirateIcon(glyph: PirateGlyph.chest),
+            selectedIcon: PirateIcon(glyph: PirateGlyph.chest, size: 26),
             label: 'Settings',
           ),
         ],

@@ -9,4 +9,7 @@
 # symbolicate release stack traces. Keep them private: never commit or ship.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec flutter build apk --release --obfuscate --split-debug-info=build/symbols/android "$@"
+exec flutter build apk --release --obfuscate \
+  --split-debug-info=build/symbols/android \
+  --extra-gen-snapshot-options=--strip \
+  "$@"

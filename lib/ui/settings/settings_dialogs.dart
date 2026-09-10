@@ -14,10 +14,7 @@ class ChangePinResult {
 enum GamePinAction { change, clear }
 
 class GamePinDialogResult {
-  const GamePinDialogResult({
-    required this.walletPin,
-    required this.gamePin,
-  });
+  const GamePinDialogResult({required this.walletPin, required this.gamePin});
   final String walletPin;
   final String gamePin;
 }
@@ -65,8 +62,7 @@ class ChangePinDialogState extends State<ChangePinDialog> {
     if (next.length < AppConfig.pinMinLength ||
         !RegExp(r'^\d+$').hasMatch(next)) {
       setState(() {
-        _error =
-            'New PIN must be at least ${AppConfig.pinMinLength} digits';
+        _error = 'New PIN must be at least ${AppConfig.pinMinLength} digits';
       });
       return;
     }
@@ -74,9 +70,7 @@ class ChangePinDialogState extends State<ChangePinDialog> {
       setState(() => _error = 'New PINs do not match');
       return;
     }
-    Navigator.of(context).pop(
-      ChangePinResult(current: current, next: next),
-    );
+    Navigator.of(context).pop(ChangePinResult(current: current, next: next));
   }
 
   @override
@@ -87,15 +81,9 @@ class ChangePinDialogState extends State<ChangePinDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PinTextField(
-              controller: _current,
-              label: 'Current PIN',
-            ),
+            PinTextField(controller: _current, label: 'Current PIN'),
             const SizedBox(height: 12),
-            PinTextField(
-              controller: _next,
-              label: 'New PIN',
-            ),
+            PinTextField(controller: _next, label: 'New PIN'),
             const SizedBox(height: 12),
             PinTextField(
               controller: _confirm,
@@ -117,10 +105,7 @@ class ChangePinDialogState extends State<ChangePinDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Update PIN'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Update PIN')),
       ],
     );
   }
@@ -176,8 +161,7 @@ class _GamePinDialogState extends State<GamePinDialog> {
     if (game.length < AppConfig.pinMinLength ||
         !RegExp(r'^\d+$').hasMatch(game)) {
       setState(() {
-        _error =
-            'Game PIN must be at least ${AppConfig.pinMinLength} digits';
+        _error = 'Game PIN must be at least ${AppConfig.pinMinLength} digits';
       });
       return;
     }
@@ -189,9 +173,9 @@ class _GamePinDialogState extends State<GamePinDialog> {
       setState(() => _error = 'Game PINs do not match');
       return;
     }
-    Navigator.of(context).pop(
-      GamePinDialogResult(walletPin: wallet, gamePin: game),
-    );
+    Navigator.of(
+      context,
+    ).pop(GamePinDialogResult(walletPin: wallet, gamePin: game));
   }
 
   @override
@@ -208,15 +192,9 @@ class _GamePinDialogState extends State<GamePinDialog> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            PinTextField(
-              controller: _wallet,
-              label: 'Wallet PIN',
-            ),
+            PinTextField(controller: _wallet, label: 'Wallet PIN'),
             const SizedBox(height: 12),
-            PinTextField(
-              controller: _game,
-              label: 'Game PIN',
-            ),
+            PinTextField(controller: _game, label: 'Game PIN'),
             const SizedBox(height: 12),
             PinTextField(
               controller: _confirm,
@@ -238,10 +216,7 @@ class _GamePinDialogState extends State<GamePinDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(widget.confirmLabel),
-        ),
+        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }
@@ -322,10 +297,7 @@ class ConfirmWalletPinDialogState extends State<ConfirmWalletPinDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(widget.confirmLabel),
-        ),
+        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }
@@ -450,10 +422,7 @@ class PasswordDialogState extends State<PasswordDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(widget.confirmLabel),
-        ),
+        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }
@@ -555,10 +524,7 @@ class CustomEndpointDialogState extends State<CustomEndpointDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Save'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
   }

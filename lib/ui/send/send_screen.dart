@@ -6,14 +6,17 @@ import 'package:xrpl_dart/xrpl_dart.dart';
 import 'package:xrpl_mobile_wallet/domain/amount/xrp_amount.dart';
 import 'package:xrpl_mobile_wallet/data/xrpl_rpc/xrpl_rpc_client.dart';
 import 'package:xrpl_mobile_wallet/data/ledger_device/ledger_xrp_device.dart';
+import 'package:xrpl_mobile_wallet/data/payments/batch_service.dart';
 import 'package:xrpl_mobile_wallet/data/payments/payment_service.dart';
+import 'package:xrpl_mobile_wallet/domain/payments/batch_plan.dart';
 import 'package:xrpl_mobile_wallet/domain/wallet/wallet_account.dart';
 import 'package:xrpl_mobile_wallet/domain/tokens/currency_display.dart';
 import 'package:xrpl_mobile_wallet/data/secure/screen_security.dart';
 import 'package:xrpl_mobile_wallet/domain/validation/address_validator.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
 import 'package:xrpl_mobile_wallet/state/wallet_list_controller.dart';
-import 'package:xrpl_mobile_wallet/ui/lock/pin/confirm_wallet_pin.dart';
+import 'package:xrpl_mobile_wallet/ui/lock/pin/swipe_to_sign.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 import 'package:xrpl_mobile_wallet/ui/user_facing_error.dart';
 
 enum _SendStep { asset, destination, amount, review, result }
@@ -47,6 +50,9 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   String? _feeError;
   bool _feeBusy = false;
   DestinationAccountPolicy? _destPolicy;
+
+  /// Completed XRP destinations when building an All-or-nothing batch.
+  final List<BatchPaymentLeg> _batchLegs = [];
 
   late final PaymentService _paymentService;
 
@@ -136,9 +142,19 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     }
   }
 
+  bool get _canUseBatch {
+    if (_hasPresetDestination) return false;
+    if (widget.account.useLedger) return false;
+    if (_selected == null || _selected!.currency != 'XRP') return false;
+    return ref.read(networkControllerProvider).batchAmendmentEnabled;
+  }
+
   String get _stepTitle => switch (_step) {
     _SendStep.asset => 'Select asset',
-    _SendStep.destination => 'Destination',
+    _SendStep.destination =>
+      _batchLegs.isEmpty
+          ? 'Destination'
+          : 'Destination ${_batchLegs.length + 1}',
     _SendStep.amount => 'Amount',
     _SendStep.review => 'Review',
     _SendStep.result => 'Result',
@@ -159,7 +175,15 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       case _SendStep.asset:
         Navigator.of(context).pop();
       case _SendStep.destination:
-        _goTo(_SendStep.asset);
+        if (_batchLegs.isNotEmpty) {
+          final last = _batchLegs.removeLast();
+          _destinationController.text = last.destination;
+          _tagController.text = last.destinationTag?.toString() ?? '';
+          _amountController.text = last.amountXrp;
+          _goTo(_SendStep.amount);
+        } else {
+          _goTo(_SendStep.asset);
+        }
       case _SendStep.amount:
         if (_hasPresetDestination) {
           Navigator.of(context).pop();
@@ -178,6 +202,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       setState(() => _error = 'Select an asset to send');
       return;
     }
+    _batchLegs.clear();
     _goTo(_SendStep.destination);
   }
 
@@ -304,8 +329,26 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         return;
       }
 
+      final baseFee = await ref
+          .read(xrplRpcClientProvider)
+          .fetchMinimumFeeDrops();
+      final pendingLegs = [
+        ..._batchLegs,
+        BatchPaymentLeg(
+          destination: dest,
+          amountXrp: amount.trim(),
+          destinationTag: tag,
+          destUnfunded: !policy.exists,
+        ),
+      ];
+      final useBatch = _canUseBatch && pendingLegs.length >= 2;
       final feeDrops =
-          (await ref.read(xrplRpcClientProvider).fetchMinimumFeeDrops())
+          (useBatch
+                  ? BatchValidators.estimateOuterFeeDrops(
+                      baseFeeDrops: baseFee,
+                      innerCount: pendingLegs.length,
+                    )
+                  : baseFee)
               .toString();
       final feeErr = PaymentValidators.validateFeeDrops(feeDrops);
       if (feeErr != null) {
@@ -318,12 +361,18 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       }
 
       if (isXrp) {
-        final spendErr = PaymentValidators.validateXrpSpendable(
-          amountXrp: amount,
-          availableXrp: selected.value,
-          feeDrops: feeDrops,
-          destUnfunded: !policy.exists,
-        );
+        final spendErr = useBatch
+            ? BatchValidators.validateSpendable(
+                legs: pendingLegs,
+                availableXrp: selected.value,
+                feeDrops: feeDrops,
+              )
+            : PaymentValidators.validateXrpSpendable(
+                amountXrp: amount,
+                availableXrp: selected.value,
+                feeDrops: feeDrops,
+                destUnfunded: !policy.exists,
+              );
         if (spendErr != null) {
           if (!mounted) return;
           setState(() {
@@ -358,6 +407,90 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     }
   }
 
+  Future<void> _addAnotherDestination() async {
+    if (!_canUseBatch) return;
+    if (_batchLegs.length >= BatchValidators.maxLegs - 1) return;
+
+    final selected = _selected;
+    if (selected == null || selected.currency != 'XRP') return;
+    final amount = _amountController.text;
+    final dest = _destinationController.text.trim();
+    final destErr = BatchValidators.validateDestination(
+      destination: dest,
+      fromAddress: widget.account.address,
+    );
+    if (destErr != null) {
+      setState(() => _error = destErr);
+      return;
+    }
+    final amountErr = PaymentValidators.validateXrpAmount(amount);
+    if (amountErr != null) {
+      setState(() => _error = amountErr);
+      return;
+    }
+
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
+    try {
+      await _ensureConnected();
+      if (!_canUseBatch) {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Batch payments are not enabled on this network yet';
+          _busy = false;
+        });
+        return;
+      }
+      final policy = _destPolicy ?? await _loadDestinationPolicy(dest);
+      int? tag;
+      try {
+        tag = PaymentValidators.parseDestinationTag(_tagController.text);
+      } on FormatException {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Destination tag is invalid.';
+          _busy = false;
+        });
+        return;
+      }
+      final policyError = policy.sendError(isXrp: true, destinationTag: tag);
+      if (policyError != null) {
+        if (!mounted) return;
+        setState(() {
+          _error = policyError;
+          _busy = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _batchLegs.add(
+          BatchPaymentLeg(
+            destination: dest,
+            amountXrp: amount.trim(),
+            destinationTag: tag,
+            destUnfunded: !policy.exists,
+          ),
+        );
+        _destinationController.clear();
+        _tagController.clear();
+        _amountController.clear();
+        _destPolicy = null;
+        _busy = false;
+      });
+      _goTo(_SendStep.destination);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = userFacingError(e);
+        _busy = false;
+      });
+    }
+  }
+
   String get _amountLabel {
     final s = _selected;
     if (s == null) return '';
@@ -371,12 +504,14 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     if (selected == null) return;
     if (_feeBusy || _feeError != null || _feeDrops == null) return;
 
-    final pinOk = await promptAndVerifyWalletPin(
+    final batching = _canUseBatch && _batchLegs.isNotEmpty;
+    final pinOk = await promptSwipeToSign(
       context,
-      ref,
-      title: 'Confirm send',
-      message: 'Enter your wallet PIN to sign and submit this payment.',
-      confirmLabel: 'Sign',
+      title: batching ? 'Confirm batch' : 'Confirm send',
+      message: batching
+          ? 'Slide to sign this all-or-nothing batch. The wallet is already unlocked.'
+          : 'Slide to sign and submit this payment. The wallet is already unlocked.',
+      actionLabel: 'Slide to sign',
     );
     if (!pinOk || !mounted) return;
 
@@ -411,7 +546,29 @@ class _SendScreenState extends ConsumerState<SendScreen> {
           throw StateError('No secret found for this wallet');
         }
 
-        if (selected.currency == 'XRP') {
+        if (selected.currency == 'XRP' &&
+            _canUseBatch &&
+            _batchLegs.isNotEmpty) {
+          final policy = _destPolicy ?? await _loadDestinationPolicy(dest);
+          final legs = [
+            ..._batchLegs,
+            BatchPaymentLeg(
+              destination: dest,
+              amountXrp: _amountController.text.trim(),
+              destinationTag: tag,
+              destUnfunded: !policy.exists,
+            ),
+          ];
+          result = await BatchService(_paymentService).submitXrpAllOrNothing(
+            walletId: account.id,
+            network: network,
+            secret: secret,
+            fromAddress: account.address,
+            legs: legs,
+            rpc: rpc,
+            expectedFeeDrops: _feeDrops,
+          );
+        } else if (selected.currency == 'XRP') {
           result = await _paymentService.sendXrp(
             walletId: account.id,
             network: network,
@@ -725,6 +882,15 @@ class _SendScreenState extends ConsumerState<SendScreen> {
 
   List<Widget> _buildDestinationFields() {
     return [
+      if (_batchLegs.isNotEmpty) ...[
+        Text(
+          'In this batch (${_batchLegs.length})',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        ..._batchLegs.map(_legSummaryTile),
+        const SizedBox(height: 16),
+      ],
       TextField(
         controller: _destinationController,
         decoration: const InputDecoration(
@@ -764,7 +930,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       if (_hasPresetDestination) ...[
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.coffee),
+          leading: const PirateIcon(glyph: PirateGlyph.grog),
           title: const Text('Coffee for the developer'),
           subtitle: Text(widget.presetDestination!),
         ),
@@ -793,7 +959,35 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         enabled: !_busy,
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       ),
+      if (_canUseBatch && _batchLegs.length < BatchValidators.maxLegs - 1) ...[
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: _busy ? null : _addAnotherDestination,
+          icon: const Icon(Icons.add),
+          label: const Text('Add another destination'),
+        ),
+        Text(
+          'All destinations pay together or none do (all or nothing).',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     ];
+  }
+
+  Widget _legSummaryTile(BatchPaymentLeg leg) {
+    final tag = leg.destinationTag;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: Text(
+        '${leg.amountXrp} XRP',
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      subtitle: Text(
+        tag == null ? leg.destination : '${leg.destination} · tag $tag',
+        style: const TextStyle(fontFamily: 'monospace'),
+      ),
+    );
   }
 
   List<Widget> _buildReview(NetworkState networkState) {
@@ -802,6 +996,15 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     try {
       tag = PaymentValidators.parseDestinationTag(_tagController.text);
     } catch (_) {}
+
+    final currentLeg = BatchPaymentLeg(
+      destination: _destinationController.text.trim(),
+      amountXrp: _amountController.text.trim(),
+      destinationTag: tag,
+    );
+    final reviewLegs = [..._batchLegs, currentLeg];
+    final isBatch = _canUseBatch && reviewLegs.length >= 2;
+    final duplicate = BatchValidators.hasDuplicateDestinations(reviewLegs);
 
     return [
       Card(
@@ -812,16 +1015,39 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             children: [
               _reviewRow('From', widget.account.address),
               const Divider(height: 24),
-              _reviewRow('To', _destinationController.text.trim()),
-              if (tag != null) ...[
+              if (isBatch) ...[
+                _reviewRow('Mode', 'All or nothing'),
                 const SizedBox(height: 8),
-                _reviewRow('Destination tag', tag.toString()),
-              ],
-              const Divider(height: 24),
-              _reviewRow('Amount', _amountLabel),
-              if (s.issuer != null) ...[
-                const SizedBox(height: 8),
-                _reviewRow('Issuer', s.issuer!),
+                _reviewRow('Payments', '${reviewLegs.length}'),
+                const Divider(height: 24),
+                for (var i = 0; i < reviewLegs.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 12),
+                  _reviewRow('To ${i + 1}', reviewLegs[i].destination),
+                  if (reviewLegs[i].destinationTag != null) ...[
+                    const SizedBox(height: 8),
+                    _reviewRow(
+                      'Destination tag ${i + 1}',
+                      reviewLegs[i].destinationTag.toString(),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  _reviewRow(
+                    'Amount ${i + 1}',
+                    '${reviewLegs[i].amountXrp} XRP',
+                  ),
+                ],
+              ] else ...[
+                _reviewRow('To', _destinationController.text.trim()),
+                if (tag != null) ...[
+                  const SizedBox(height: 8),
+                  _reviewRow('Destination tag', tag.toString()),
+                ],
+                const Divider(height: 24),
+                _reviewRow('Amount', _amountLabel),
+                if (s.issuer != null) ...[
+                  const SizedBox(height: 8),
+                  _reviewRow('Issuer', s.issuer!),
+                ],
               ],
               const Divider(height: 24),
               _reviewRow('Network', networkState.network.label),
@@ -831,10 +1057,20 @@ class _SendScreenState extends ConsumerState<SendScreen> {
           ),
         ),
       ),
+      if (duplicate) ...[
+        const SizedBox(height: 12),
+        Text(
+          'Two payments go to the same address. That is allowed; confirm it is intentional.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
       const SizedBox(height: 12),
       Text(
-        'Confirm to sign with the key stored on this device and broadcast '
-        'the payment. This cannot be undone.',
+        isBatch
+            ? 'Confirm to sign with the key stored on this device and broadcast '
+                  'this batch. Every payment applies, or none do. This cannot be undone.'
+            : 'Confirm to sign with the key stored on this device and broadcast '
+                  'the payment. This cannot be undone.',
         style: Theme.of(context).textTheme.bodySmall,
       ),
     ];
@@ -874,6 +1110,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     final color = r.isSuccess
         ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.error;
+    final wasBatch = _batchLegs.isNotEmpty;
+    final mapped = BatchValidators.userFacingEngineResult(r.engineResult);
     return [
       Icon(
         r.isSuccess ? Icons.check_circle : Icons.error,
@@ -882,13 +1120,17 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       ),
       const SizedBox(height: 16),
       Text(
-        r.isSuccess ? 'Payment submitted' : 'Submission failed',
+        r.isSuccess
+            ? (wasBatch
+                  ? 'Batch submitted — all payments applied'
+                  : 'Payment submitted')
+            : 'Submission failed',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color),
       ),
       const SizedBox(height: 12),
       _reviewRow('Engine result', r.engineResult),
       const SizedBox(height: 8),
-      _reviewRow('Message', r.engineResultMessage),
+      _reviewRow('Message', mapped ?? r.engineResultMessage),
       const SizedBox(height: 8),
       _reviewRow('Hash', r.hash),
       if (r.feeDrops != null) ...[

@@ -13,6 +13,7 @@ import 'package:xrpl_mobile_wallet/domain/validation/mnemonic_grid.dart';
 import 'package:xrpl_mobile_wallet/ui/wallets/import/bip39_word_field.dart';
 import 'package:xrpl_mobile_wallet/data/ledger_device/ledger_xrp_device.dart';
 import 'package:xrpl_mobile_wallet/state/providers.dart';
+import 'package:xrpl_mobile_wallet/ui/theme/pirate_icon.dart';
 
 enum _ImportTab { mnemonic, familySeed, watchAddress, ledger }
 
@@ -40,6 +41,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   bool _obscureSecret = true;
   int _ledgerIndex = 0;
   String? _ledgerAddress;
+  late NetworkId _walletNetwork;
 
   final _importer = WalletImporter();
 
@@ -47,6 +49,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   void initState() {
     super.initState();
     ScreenSecurity.enable();
+    _walletNetwork = ref.read(networkControllerProvider).network;
   }
 
   @override
@@ -94,7 +97,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       setState(() => _error = e.message?.toString());
       return;
     }
-    final network = ref.read(networkControllerProvider).network;
+    final network = _walletNetwork;
 
     setState(() {
       _error = null;
@@ -126,6 +129,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           throw StateError('Ledger import is handled separately.');
       }
 
+      await _applyWalletNetwork();
       await ref.read(walletListControllerProvider.notifier).addImported(result);
 
       _labelController.clear();
@@ -158,12 +162,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _busy = true;
     });
     try {
+      await _applyWalletNetwork();
       await ref
           .read(walletListControllerProvider.notifier)
           .addLedgerWallet(
             label: _labelController.text,
             address: address,
             accountIndex: _ledgerIndex,
+            preferredNetwork: _walletNetwork,
           );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -200,6 +206,16 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       await session?.close();
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Show the imported wallet on the list: switch the app network if the
+  /// user overrode it.
+  Future<void> _applyWalletNetwork() async {
+    final active = ref.read(networkControllerProvider).network;
+    if (active == _walletNetwork) return;
+    await ref
+        .read(networkControllerProvider.notifier)
+        .setNetwork(_walletNetwork);
   }
 
   String get _secretHint {
@@ -249,8 +265,6 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final network = ref.watch(networkControllerProvider).network;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Import wallet')),
       body: ListView(
@@ -261,22 +275,22 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               ButtonSegment(
                 value: _ImportTab.mnemonic,
                 label: Text('Mnemonic'),
-                icon: Icon(Icons.password),
+                icon: PirateIcon(glyph: PirateGlyph.scroll),
               ),
               ButtonSegment(
                 value: _ImportTab.ledger,
                 label: Text('Ledger'),
-                icon: Icon(Icons.usb),
+                icon: PirateIcon(glyph: PirateGlyph.compass),
               ),
               ButtonSegment(
                 value: _ImportTab.familySeed,
                 label: Text('Seed'),
-                icon: Icon(Icons.key),
+                icon: PirateIcon(glyph: PirateGlyph.key),
               ),
               ButtonSegment(
                 value: _ImportTab.watchAddress,
                 label: Text('Watch'),
-                icon: Icon(Icons.visibility),
+                icon: PirateIcon(glyph: PirateGlyph.spyglass),
               ),
             ],
             selected: {_tab},
@@ -327,7 +341,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _queryLedger,
-                  icon: const Icon(Icons.usb),
+                  icon: const PirateIcon(glyph: PirateGlyph.compass),
                   label: const Text('Query Ledger address'),
                 ),
                 if (_ledgerAddress != null) ...[
@@ -387,9 +401,27 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               label: const Text('Scan address QR'),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          Text('Network', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          SegmentedButton<NetworkId>(
+            segments: const [
+              ButtonSegment(value: NetworkId.mainnet, label: Text('Mainnet')),
+              ButtonSegment(value: NetworkId.testnet, label: Text('Testnet')),
+            ],
+            selected: {_walletNetwork},
+            onSelectionChanged: _busy
+                ? null
+                : (sel) {
+                    if (sel.isEmpty) return;
+                    setState(() => _walletNetwork = sel.first);
+                  },
+          ),
+          const SizedBox(height: 8),
           Text(
-            'Network: ${network.label}',
+            _walletNetwork == ref.watch(networkControllerProvider).network
+                ? 'Uses the currently selected network. Change this to restore onto the other ledger.'
+                : 'This wallet will be saved on ${_walletNetwork.label}. The app will switch to that network after import.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           if (_error != null) ...[
@@ -466,6 +498,9 @@ class _MnemonicImportGrid extends StatelessWidget {
             controller: controllers[index],
             focusNode: focusNodes[index],
             enabled: enabled,
+            nextFocusNode: index + 1 < focusNodes.length
+                ? focusNodes[index + 1]
+                : null,
             onPasteMultiWord: onPaste,
           ),
         ),
